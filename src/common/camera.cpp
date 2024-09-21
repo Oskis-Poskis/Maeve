@@ -64,24 +64,27 @@ void Camera::KeyboardInput(Movement_Direction direction)
 
 void Camera::Update()
 {
-    if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
+    if (Input::GetInputContext() == Input::Game || Input::GetInputContext() == Input::Menu)
     {
-        glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        MouseInput(Input::GetMouseDeltaX(), Input::GetMouseDeltaY());
-    }
-    else
-    {
-        glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    }
+        if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
+        {
+            glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            MouseInput(Input::GetMouseDeltaX(), Input::GetMouseDeltaY());
+        }
+        else
+        {
+            glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
 
-    if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
-    if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
-    if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
-    if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
-    if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
-    if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
+        if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
+        if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
+        if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
+        if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
+        if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
+        if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
 
-    Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Statistics::GetDeltaTime());
+        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Statistics::GetDeltaTime());
+    }
 }
 
 void Camera::_updateCameraVectors()

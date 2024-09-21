@@ -4,6 +4,9 @@
 
 namespace Text
 {
+    void SetGlobalTextScaling(float scaling);
+    float GetGlobalTextScaling();
+
     void Initialize();
     void WindowResize();
     void Render(std::string text, float x, float y, float scale);

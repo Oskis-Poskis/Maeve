@@ -13,6 +13,9 @@ namespace Input
     float  _xDelta, _yDelta;
     float  _lastX,  _lastY;
 
+    InputContext inputContext = Game;
+    InputContext previousInputContext;
+
     void Initialize()
     {
         _lastX = Engine::GetWindowSize().x / 2;
@@ -40,6 +43,22 @@ namespace Input
         _yDelta = _lastY - _mouseY;   
         _lastX = _mouseX;
         _lastY = _mouseY;
+    }
+
+    void SetInputContext(InputContext Context)
+    {
+        previousInputContext = inputContext;
+        inputContext = Context;
+    }
+
+    InputContext GetInputContext()
+    {
+        return inputContext;
+    }
+
+    InputContext GetPreviousInputContext()
+    {
+        return previousInputContext;
     }
 
     bool KeyPressed(unsigned int keycode)

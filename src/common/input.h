@@ -2,6 +2,17 @@
 
 namespace Input
 {
+    enum InputContext
+    {
+        Game,
+        Menu,
+        TextInput
+    };
+
+    void SetInputContext(InputContext Context);
+    InputContext GetInputContext();
+    InputContext GetPreviousInputContext();
+
     void Initialize();
     void Update();
     bool KeyPressed(unsigned int keycode);

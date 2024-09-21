@@ -12,8 +12,9 @@
 
 ⦁ Hot reloading ✅
 ⦁ OBJ loading (no indices) ✅
+⦁ Input at 60 fps
 ⦁ UI Hot Menus (Tab)
-    𐩑 Home
+    𐩑 Home ✅
     𐩑 SceneManager:: (Shift + Space)
         𐩑 List of objects
         𐩑 Add new
@@ -22,7 +23,7 @@
         𐩑 Textures
         𐩑 Materials
         𐩑 Shaders?
-    𐩑 Quick Actions  (Shift + Q)
+    𐩑 Quick Actions (Shift + Q)
     𐩑 Gradient from selected item
 ⦁ Shadow Mapping (Variance?)
 ⦁ SSAO

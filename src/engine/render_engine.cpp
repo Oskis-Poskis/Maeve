@@ -95,10 +95,11 @@ namespace Engine
         Text::Initialize();
         UI::Initialize();
         AssetManager::Initialize(_windowWidth, _windowHeight);
+
+        ToggleFullscreen();
     }
 
-    float yOffset     = 25;
-    float lineSpacing = 30;
+    float yOffset     = 30;
     float textScaling = 0.45f;
     void NewFrame(float fov, glm::mat4 vMat, glm::vec3 cPos)
     {
@@ -120,6 +121,7 @@ namespace Engine
         std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::intFmtK(SceneManager::ObjectsTriCount));
         
         glDisable(GL_DEPTH_TEST);
+        float lineSpacing = 25 * Text::GetGlobalTextScaling();
         Text::Render(Statistics::Renderer, 15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
         if (Statistics::Vendor == "NVIDIA Corporation") Text::Render(memory, 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
         Text::Render(FPS,                  15, Engine::GetWindowSize().y - yOffset - 2 * lineSpacing, textScaling);

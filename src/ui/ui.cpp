@@ -26,24 +26,24 @@ namespace UI
 
     // Menu General
     int outlineWidth   = 4;
-    int MainMenuStartY = 160;
+    int MainMenuStartY = 220;
     glm::vec3 OutlineColor(0.15f);
-    glm::vec3 SecondaryColor = glm::vec3(247, 224, 100) / 256.0f;
+    glm::vec3 SecondaryColor = glm::vec3(247, 224, 100) / 256.0f; //vec3(255,141,227) / 256.0f; 
 
     // Title Bar
-    int TitleBarPaddingYPX    = 8;
+    int TitleBarPaddingYPX    = 5;
     glm::vec3 TitleBarColor   = glm::vec3(126, 214, 128) / 256.0f;
     float TitleBarTextScaling = 0.65f;
-    glm::vec3 TitleBarTextColor(0.15f);
+    glm::vec3 TitleBarTextColor(0.1f);
 
     // Item
     float ItemTextScaling = 0.475f;
-    int   ItemPaddingXPX  = 35;
-    int   ItemPaddingYPX  = 12;
+    int   ItemPaddingXPX  = 25;
+    int   ItemPaddingYPX  = 10;
     int   ItemSelectionThickness = 3;
     glm::vec3 ItemColor(0.15f);
     glm::vec3 ItemTextActive   = glm::vec3(1.0f);
-    glm::vec3 ItemTextInactive = glm::vec3(142, 139, 146) / 256.0f;
+    glm::vec3 ItemTextInactive = glm::vec3(122, 119, 126) / 256.0f;
 
     // -----------------------------------
 
@@ -54,21 +54,41 @@ namespace UI
     float centerX, centerY;
 
     bool inMenu = false;
-    std::string menuTitle = ".________.";
-    std::array<std::string, 8> items = {"SceneManger", "AssetManger", "Statistics", "Engine", "qk", "temp", "temp", "temp"};
+    bool inSubMenu = false;
+    std::string menuTitle = "........";
+    std::array<std::string, 8> items = {"SceneManager", "AssetManager", "Statistics", "Engine", "qk", "temp", "temp", "temp"};
 
     void Render()
     {
         if (Input::KeyPressed(GLFW_KEY_TAB))
         {
-            if (inMenu)inMenu = false;
-            else inMenu = true;
+            if (inMenu)
+            {
+                inMenu = false;
+                Input::SetInputContext(Input::Game);
+            }
+            else
+            {
+                inMenu = true;
+                Input::SetInputContext(Input::Menu);
+            }
+        }
+
+        if (Input::KeyPressed(GLFW_KEY_PERIOD))
+        {
+            Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() + 0.2f);
+            WindowResize();
+        }
+        if (Input::KeyPressed(GLFW_KEY_COMMA))
+        {
+            Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() - 0.2f);
+            WindowResize();
         }
 
         if (inMenu)
         {
-            float right_edge   = centerX + mainMenuWidth / 2;
-            float left_edge    = centerX - mainMenuWidth / 2;
+            float right_edge   = centerX + mainMenuWidth / 2 - mainMenuWidth * inSubMenu;
+            float left_edge    = centerX - mainMenuWidth / 2 - mainMenuWidth * inSubMenu;
             float top_edge     = centerY + MainMenuStartY;
             float bottom_edge  = centerY - MainMenuStartY;
 
@@ -79,6 +99,14 @@ namespace UI
             if (Input::KeyPressed(GLFW_KEY_DOWN))
             {
                 activeItem = glm::clamp(activeItem + 1, 0, (int)items.size() - 1);
+            }
+            if (Input::KeyPressed(GLFW_KEY_RIGHT))
+            {
+                inSubMenu = true;
+            }
+            if (Input::KeyPressed(GLFW_KEY_LEFT))
+            {
+                inSubMenu = false;
             }
 
             // BG tint
@@ -108,15 +136,15 @@ namespace UI
                 DrawMenuRect(glm::vec2(right_edge, top_edge - titleHeightPX - itemHeightPX * i),
                              glm::vec2(left_edge,  top_edge - titleHeightPX - itemHeightPX * (i + 1)), ItemColor * itemShade);
                 glm::vec3 col = (i == activeItem) ? ItemTextActive : ItemTextInactive;
-                Text::Render(items[i], centerX  - Text::CalculateTextWidth(items[i], ItemTextScaling) / 2,
+                Text::Render(items[i], centerX - mainMenuWidth / 2.0f + ItemPaddingXPX - mainMenuWidth * inSubMenu,
                                        top_edge - titleHeightPX - itemHeightPX * (i + 1) + ItemPaddingYPX, ItemTextScaling, col);
             }
 
-            //DrawMenuRect(glm::vec2(right_edge, top_edge - titleHeightPX - itemHeightPX * (activeItem + 1) + ItemSelectionThickness),
-            //             glm::vec2(left_edge,  top_edge - titleHeightPX - itemHeightPX * (activeItem + 1)), SecondaryColor);
-                         
+            // Selection Marker
             DrawMenuRect(glm::vec2(right_edge, top_edge - titleHeightPX - itemHeightPX * (activeItem)),
                          glm::vec2(right_edge - ItemSelectionThickness,  top_edge - titleHeightPX - itemHeightPX * (activeItem + 1)), SecondaryColor);
+            /* DrawMenuRect(glm::vec2(left_edge + ItemSelectionThickness, top_edge - titleHeightPX - itemHeightPX * (activeItem)),
+                         glm::vec2(left_edge,  top_edge - titleHeightPX - itemHeightPX * (activeItem + 1)), SecondaryColor); */
         }
     }
 
@@ -139,7 +167,7 @@ namespace UI
 
     void Initialize()
     {
-        UIshader = std::make_unique<Shader>("/../res/shaders/ui");
+        UIshader      = std::make_unique<Shader>("/../res/shaders/ui");
         defocusShader = std::make_unique<Shader>("/../res/shaders/defocus");
 
         glGenVertexArrays(1, &menuVAO);
@@ -163,7 +191,7 @@ namespace UI
     {
         titleHeightPX = Text::CalculateMaxTextHeight(menuTitle, TitleBarTextScaling, true) + TitleBarPaddingYPX * 2;
         itemHeightPX  = Text::CalculateMaxTextHeight(items[0].substr(0, 1), ItemTextScaling, true) + ItemPaddingYPX * 2;
-        mainMenuWidth  = Text::CalculateTextWidth(items[0], ItemTextScaling) + ItemPaddingXPX * 2;
+        mainMenuWidth = Text::CalculateTextWidth(items[0], ItemTextScaling) + ItemPaddingXPX * 2;
         centerX = Engine::GetWindowSize().x / 2.0f;
         centerY = Engine::GetWindowSize().y / 2.0f;
 

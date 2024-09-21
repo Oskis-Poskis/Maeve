@@ -17,6 +17,8 @@ namespace Text
     std::unique_ptr<Shader> _textShader;
     uint _textVAO, _textVBO;
 
+    float globalTextScale = 1.0f;
+
     struct Character
     {
         uint TextureID;
@@ -29,13 +31,14 @@ namespace Text
 
     float CalculateTextWidth(std::string text, float scale)
     {
+        float _scale = scale * globalTextScale;
         float width = 0;
 
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
         {
             Character ch = Characters[*c];
-            width += (ch.Advance >> 6) * scale;
+            width += (ch.Advance >> 6) * _scale;
         }
 
         return width;
@@ -43,6 +46,8 @@ namespace Text
 
     float CalculateMaxTextHeight(std::string text, float scale, bool includeDescent)
     {
+        float _scale = scale * globalTextScale;
+
         float maxheight = 0;
         int maxAscent   = 0;
         int maxDescent  = 0;
@@ -58,8 +63,8 @@ namespace Text
             maxDescent = glm::max(maxDescent, descent);
         }
         
-        if (includeDescent) return (maxAscent - maxDescent) * scale;
-        else return (maxAscent) * scale;
+        if (includeDescent) return (maxAscent - maxDescent) * _scale;
+        else return (maxAscent) * _scale;
     }
 
     void Render(std::string text, float x, float y, float scale)
@@ -69,6 +74,8 @@ namespace Text
 
     void Render(std::string text, float x, float y, float scale, glm::vec3 color)
     {
+        float _scale = scale * globalTextScale;
+
         _textShader->Use();
         _textShader->SetVector3("color", color);
 
@@ -80,11 +87,11 @@ namespace Text
         {
             Character ch = Characters[*c];
 
-            float xpos = x + ch.Bearing.x * scale;
-            float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
+            float xpos = x + ch.Bearing.x * _scale;
+            float ypos = y - (ch.Size.y - ch.Bearing.y) * _scale;
 
-            float w = ch.Size.x * scale;
-            float h = ch.Size.y * scale;
+            float w = ch.Size.x * _scale;
+            float h = ch.Size.y * _scale;
 
             float vertices[6][4] =
             {
@@ -104,11 +111,21 @@ namespace Text
             glBindBuffer(GL_ARRAY_BUFFER, 0);
 
             glDrawArrays(GL_TRIANGLES, 0, 6);
-            x += (ch.Advance >> 6) * scale;
+            x += (ch.Advance >> 6) * _scale;
         }
 
         glBindVertexArray(0);
         glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    void SetGlobalTextScaling(float scaling)
+    {
+        globalTextScale = scaling;
+    }
+
+    float GetGlobalTextScaling()
+    {
+        return globalTextScale;
     }
 
     void Initialize()
@@ -122,7 +139,7 @@ namespace Text
             std::cout << "Couldn't initialize Freetype library :(" << std::endl;
         }
 
-        std::string fontPath = Statistics::ProjectPath + "/../res/fonts/SplineSansMono-Regular-Adjusted.ttf";
+        std::string fontPath = Statistics::ProjectPath + "/../res/fonts/DroidSansMono.ttf";
 
         FT_Face face;
         if (FT_New_Face(library, fontPath.c_str(), 0, &face))
