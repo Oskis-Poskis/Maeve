@@ -25,6 +25,7 @@
         𐩑 Shaders?
     𐩑 Quick Actions (Shift + Q)
     𐩑 Gradient from selected item
+    𐩑 Bigger step with shift/ctrl, 2, 5
 ⦁ Shadow Mapping (Variance?)
 ⦁ SSAO
 ⦁ AABB / OOB / SphereBB

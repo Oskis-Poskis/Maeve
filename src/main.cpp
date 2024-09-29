@@ -21,7 +21,7 @@ int main()
 
     glfwSetScrollCallback(Engine::GetWindowPointer(), scroll_callback);
     
-    SceneManager::Object plane("Plane Object", "plane");
+    SceneManager::Object plane("Plane", "plane");
     plane.SetScale(glm::vec3(20.0f));
     SceneManager::AddObject(plane);
 
@@ -31,7 +31,7 @@ int main()
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distrib360(0, 360);
 
-    int num = 2;
+    int num = 1;
     float spacing = 3.5f;
     for (int x = -num; x <= num; x++)
     {
@@ -40,7 +40,8 @@ int main()
             for (int z = -num; z <= num; z++)
             {
                 std::string mesh = "loaded";
-                SceneManager::Object itobj("itobj", mesh);
+                std::string name = "itobj" + std::to_string(x) + "/" + std::to_string(y) + "/" + std::to_string(z);
+                SceneManager::Object itobj(name, mesh);
                 itobj.SetPosition(glm::vec3(x * spacing, y * spacing + spacing, z * spacing));
                 itobj.SetRotation(glm::vec3(distrib360(gen), distrib360(gen), distrib360(gen)));
                 SceneManager::AddObject(itobj);
