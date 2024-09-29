@@ -27,7 +27,7 @@ namespace Text
         glm::ivec2 Bearing;
     };
 
-    std::map<char, Character> Characters;
+    std::map<unsigned char, Character> Characters;
 
     float CalculateTextWidth(std::string text, float scale)
     {
@@ -37,7 +37,7 @@ namespace Text
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
         {
-            Character ch = Characters[*c];
+            const Character& ch = Characters.at(*c);
             width += (ch.Advance >> 6) * _scale;
         }
 
@@ -55,7 +55,7 @@ namespace Text
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
         {
-            Character ch = Characters[*c];
+            const Character& ch = Characters.at(*c);
             int ascent   = ch.Bearing.y;
             int descent  = ch.Size.y - ascent;
 
@@ -85,7 +85,7 @@ namespace Text
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
         {
-            Character ch = Characters[*c];
+            const Character& ch = Characters.at(*c);
 
             float xpos = x + ch.Bearing.x * _scale;
             float ypos = y - (ch.Size.y - ch.Bearing.y) * _scale;
@@ -160,11 +160,15 @@ namespace Text
 
             if (FT_Load_Char(face, c, FT_LOAD_RENDER))
             {
-                std::cout << "Failed to load glyph: " + c;
+                std::cout << "Failed to load glyph: " << c << "\n";
                 continue;
             }
 
-            FT_Render_Glyph(slot, FT_RENDER_MODE_SDF);
+            if (FT_Render_Glyph(slot, FT_RENDER_MODE_SDF))
+            {
+                std::cout << "Some error idk\n";
+                continue;
+            }
 
             uint texture;
             glGenTextures(1, &texture);
@@ -176,15 +180,16 @@ namespace Text
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-            Character character =
+            /* Character character =
             {
                 texture,
                 face->glyph->advance.x,
                 glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
                 glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-            };
-            Characters.insert(std::pair<char, Character>(c, character));
-    
+            }; */
+            //Characters.insert(std::pair<char, Character>(c, character));
+            Characters.emplace(std::pair<char, Character>(c, {texture, static_cast<uint>(face->glyph->advance.x), glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows), glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top)}));
+            //Characters.emplace(c, {texture, static_cast<uint>(face->glyph->advance.x), glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows), glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top)}));
         }
 
         std::cout << "Loading font: " + fontPath + "\n";
