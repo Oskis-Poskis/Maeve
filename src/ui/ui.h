@@ -15,6 +15,9 @@ namespace UI
             int ActiveSubMenu = 0;
 
             void Render();
-            void Initialize(std::string MenuTitle, glm::vec3 TitleBarCol);
+            void Initialize(std::string MenuTitle, glm::vec3 ThemeCol);
+        
+        private:
+            void Input(int NumSubMenus);
     };
 }

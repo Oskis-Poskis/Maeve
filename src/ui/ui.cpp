@@ -9,6 +9,7 @@
 #include "text_renderer.h"
 #include "../common/shader.h"
 #include "../common/input.h"
+#include "../common/stat_counter.h"
 #include "../engine/render_engine.h"
 #include "../engine/asset_manager.h"
 #include "../engine/scene_manager.h"
@@ -48,6 +49,8 @@ namespace UI
     glm::vec3 ItemColor(0.15f);
     glm::vec3 ItemTextActive   = glm::vec3(1.0f);
     glm::vec3 ItemTextInactive = glm::vec3(122, 119, 126) / 256.0f;
+    // Item Selection modifier
+    int stepMultiplier = 2;
 
     // -----------------------------------
 
@@ -63,8 +66,8 @@ namespace UI
     Menu mainMenu;
     Menu sceneManager, assetManager, statistics, engine, qk;
     std::array<Menu, 5> subMenus;
-    // std::array<std::string, 5> items = {"SceneManager", "AssetManager", "Statistics", "Engine", "qk"};
 
+    float m_timer = 0.0f;
     void Render()
     {
         if (Input::KeyPressed(GLFW_KEY_TAB))
@@ -99,15 +102,20 @@ namespace UI
             top_edge     = centerY + MainMenuStartY;
             bottom_edge  = centerY - MainMenuStartY;
 
-            if (Input::KeyPressed(GLFW_KEY_UP))
+            m_timer += Statistics::GetDeltaTime();
+            if (m_timer >= (1 / 10.0f))
             {
-                if (!inSubMenu) mainMenu.ActiveSubMenu = glm::clamp(mainMenu.ActiveSubMenu - 1, 0, (int)subMenus.size() - 1);
-                else subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu = glm::clamp(subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu - 1, 0, (int)subMenus.size() - 1);
-            }
-            if (Input::KeyPressed(GLFW_KEY_DOWN))
-            {
-                if (!inSubMenu) mainMenu.ActiveSubMenu = glm::clamp(mainMenu.ActiveSubMenu + 1, 0, (int)subMenus.size() - 1);
-                else subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu = glm::clamp(subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu + 1, 0, (int)subMenus.size() - 1);
+                m_timer = 0.0f;
+                if (Input::KeyDown(GLFW_KEY_UP))
+                {
+                    if (!inSubMenu) mainMenu.ActiveSubMenu = glm::clamp(mainMenu.ActiveSubMenu - 1, 0, (int)subMenus.size() - 1);
+                    //else subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu = glm::clamp(subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu - 1, 0, (int)subMenus.size() - 1);
+                }
+                if (Input::KeyDown(GLFW_KEY_DOWN))
+                {
+                    if (!inSubMenu) mainMenu.ActiveSubMenu = glm::clamp(mainMenu.ActiveSubMenu + 1, 0, (int)subMenus.size() - 1);
+                    //else subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu = glm::clamp(subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu + 1, 0, (int)subMenus.size() - 1);
+                }
             }
             if (Input::KeyPressed(GLFW_KEY_RIGHT))
             {
@@ -144,27 +152,49 @@ namespace UI
         MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
     }
 
+    float sm_timer = 0.0f;
+    void Menu::Input(int NumSubMenus)
+    {
+        int mult = (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) ? stepMultiplier : 1;
+
+        sm_timer += Statistics::GetDeltaTime();
+        if (sm_timer >= (1 / (20.0f * mult)))
+        {
+            sm_timer = 0.0f;
+            if (Input::KeyDown(GLFW_KEY_UP))
+            {
+                ActiveSubMenu = glm::clamp(ActiveSubMenu - 1, 0, NumSubMenus - 1);
+            }
+
+            if (Input::KeyDown(GLFW_KEY_DOWN))
+            {
+                ActiveSubMenu = glm::clamp(ActiveSubMenu + 1, 0, NumSubMenus - 1);
+            }
+        }
+    }
+
     void Menu::Render()
     {
         {
             float xoffset = ((mainMenu.MenuWidth + 5) * inSubMenu) / 2.0f;
             
-            //if (Title == subMenus[mainMenu.ActiveSubMenu].Title) xoffset = 0;
             if (Title == subMenus[mainMenu.ActiveSubMenu].Title)
             {
                 xoffset *= -1;
 
                 if (Title == "Scene Manager")
                 {
+                    Input(SceneManager::Objects.size());
+
                     float yoffset = itemHeightPX * ActiveSubMenu;
 
                     // Outline
                     DrawRect(glm::vec2(right_edge + OutlineWidth - xoffset, top_edge + OutlineWidth + yoffset),
-                            glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * SceneManager::Objects.size() - OutlineWidth + yoffset), OutlineColor);
+                             glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * SceneManager::Objects.size() - OutlineWidth + yoffset), OutlineColor);
                 
                     // Menu Title
                     DrawRect(glm::vec2(right_edge - xoffset, top_edge + yoffset),
-                            glm::vec2(left_edge  - xoffset, top_edge - titleHeight + yoffset), ThemeColor);
+                             glm::vec2(left_edge  - xoffset, top_edge - titleHeight + yoffset), ThemeColor);
                     Text::Render(Title, centerX - Text::CalculateTextWidth(Title, TitleBarTextScaling) / 2.0f - xoffset,
                                         top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, TitleBarTextColor);
                     
