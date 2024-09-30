@@ -2,6 +2,7 @@
 
 #include "input.h"
 #include "../engine/render_engine.h"
+#include "stat_counter.h"
 
 namespace Input
 {
@@ -22,20 +23,26 @@ namespace Input
         _lastY = Engine::GetWindowSize().y / 2;
     }
 
+    float timer = 0;
     void Update()
     {
-        for (int i = 32; i < 348; i++)
+        timer += Statistics::GetDeltaTime();
+        if (timer >= (1 / 60.0f))
         {
-            // Key Down
-            if (glfwGetKey(Engine::GetWindowPointer(), i) == GLFW_PRESS) _keyDown[i] = true;
-            else _keyDown[i] = false;
+            for (int i = 32; i < 348; i++)
+            {
+                // Key Down
+                if (glfwGetKey(Engine::GetWindowPointer(), i) == GLFW_PRESS) _keyDown[i] = true;
+                else _keyDown[i] = false;
 
-            // Single Press
-            if (_keyDown[i] && !_keyDownLastFrame[i]) _keyPressed[i] = true;
-            else _keyPressed[i] = false;
+                // Single Press
+                if (_keyDown[i] && !_keyDownLastFrame[i]) _keyPressed[i] = true;
+                else _keyPressed[i] = false;
 
-            _keyDownLastFrame[i] = _keyDown[i];
+                _keyDownLastFrame[i] = _keyDown[i];
+            }
         }
+
 
         glfwGetCursorPos(Engine::GetWindowPointer(), &_mouseX, &_mouseY);
 
