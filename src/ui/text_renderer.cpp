@@ -58,12 +58,14 @@ namespace Text
             const Character& ch = Characters.at(*c);
             int ascent   = ch.Bearing.y;
             int descent  = ch.Size.y - ascent;
+            int height   = ch.Size.y;
 
             maxAscent  = glm::max(maxAscent,  ascent);
             maxDescent = glm::max(maxDescent, descent);
+            std::cout << static_cast<char>(*c) << " ascent: " << ascent << " descent: " << descent << " height: " << height << "\n";
         }
         
-        if (includeDescent) return (maxAscent - maxDescent) * _scale;
+        if (includeDescent) return (maxAscent) * _scale;
         else return (maxAscent) * _scale;
     }
 

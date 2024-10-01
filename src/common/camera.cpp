@@ -64,7 +64,7 @@ void Camera::KeyboardInput(Movement_Direction direction)
 
 void Camera::Update()
 {
-    if (Input::GetInputContext() == Input::Game || Input::GetInputContext() == Input::Menu)
+    if (Input::GetInputContext() != Input::TextInput)
     {
         if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
         {

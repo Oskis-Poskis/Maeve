@@ -6,6 +6,7 @@ namespace Input
     {
         Game,
         Menu,
+        HotMenu,
         TextInput
     };
 
@@ -17,6 +18,7 @@ namespace Input
     void Update();
     bool KeyPressed(unsigned int keycode);
     bool KeyDown(unsigned int keycode);
+    void ResetKeyPress(unsigned int keycode);
     bool LeftMBDown();
     bool RightMBDown();
 

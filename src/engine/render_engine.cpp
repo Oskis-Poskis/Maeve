@@ -22,11 +22,13 @@ namespace Engine
     int _monitorHeight  = 0;
 
     bool _fullscreen              = false;
-    int _unfullscreenWindowWidth  = 512;
-    int _unfullscreenWindowHeight = 512;
+    int _unfullscreenWindowWidth  = 1280;
+    int _unfullscreenWindowHeight = 720;
     int _unfullscreenwindowPosX   = 0;
     int _unfullscreenwindowPosY   = 0;
 
+    void SomeStats();
+    
     void _windowResized(GLFWwindow* window, int width, int height)
     {
         _windowWidth  = width;
@@ -52,7 +54,7 @@ namespace Engine
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
             glfwWindowHint(GLFW_SAMPLES, 4);
         
-            _window = glfwCreateWindow(_windowWidth, _windowHeight, "Maeve - wip", NULL, NULL);
+            _window = glfwCreateWindow(_windowWidth, _windowHeight, "Maeve 0.0.1", NULL, NULL);
             glfwMakeContextCurrent(_window);
             glfwSetErrorCallback(error_callback);
             glfwSetFramebufferSizeCallback(_window, _windowResized);
@@ -114,20 +116,7 @@ namespace Engine
 
         SceneManager::RenderAll(fov, vMat, cPos);
 
-        std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
-        std::string FPS = std::format<float>("FPS: {:.2f}", Statistics::GetFPS());
-        std::string ms  = std::format<float>("ms:  {:.2f}", Statistics::GetMS());
-        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AssetManager::Meshes.size(), qk::intFmtK(AssetManager::UniqueMeshTriCount));
-        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::intFmtK(SceneManager::ObjectsTriCount));
-        
-        glDisable(GL_DEPTH_TEST);
-        float lineSpacing = 25 * Text::GetGlobalTextScaling();
-        Text::Render(Statistics::Renderer, 15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
-        if (Statistics::Vendor == "NVIDIA Corporation") Text::Render(memory, 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
-        Text::Render(FPS,                  15, Engine::GetWindowSize().y - yOffset - 2 * lineSpacing, textScaling);
-        Text::Render(ms,                   15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
-        Text::Render(meshes,               15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
-        Text::Render(objects,              15, Engine::GetWindowSize().y - yOffset - 6 * lineSpacing, textScaling);
+        SomeStats();
         
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         UI::Render();
@@ -176,5 +165,31 @@ namespace Engine
             glfwSetWindowMonitor(_window, nullptr, _unfullscreenwindowPosX, _unfullscreenwindowPosY, _unfullscreenWindowWidth, _unfullscreenWindowHeight, mode->refreshRate);
             _fullscreen = false;
         }
+    }
+
+    float timer = 0;
+    std::string FPS = "";
+    std::string ms  = "";
+    void SomeStats()
+    {
+        std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
+        timer += Statistics::GetDeltaTime();
+        if (timer >= (1 / (10.0f)))
+        {
+            timer = 0.0f;
+            FPS = std::format<float>("FPS: {:.2f}", Statistics::GetFPS());
+            ms  = std::format<float>("ms:  {:.2f}", Statistics::GetMS());
+        }
+        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AssetManager::Meshes.size(), qk::intFmtK(AssetManager::UniqueMeshTriCount));
+        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::intFmtK(SceneManager::ObjectsTriCount));
+        
+        glDisable(GL_DEPTH_TEST);
+        float lineSpacing = 25 * Text::GetGlobalTextScaling();
+        Text::Render(Statistics::Renderer, 15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
+        if (Statistics::Vendor == "NVIDIA Corporation") Text::Render(memory, 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
+        Text::Render(FPS,                  15, Engine::GetWindowSize().y - yOffset - 2 * lineSpacing, textScaling);
+        Text::Render(ms,                   15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
+        Text::Render(meshes,               15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
+        Text::Render(objects,              15, Engine::GetWindowSize().y - yOffset - 6 * lineSpacing, textScaling);
     }
 }

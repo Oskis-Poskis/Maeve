@@ -16,8 +16,6 @@ namespace UI
 
             void Render();
             void Initialize(std::string MenuTitle, glm::vec3 ThemeCol);
-        
-        private:
             void Input(int NumSubMenus);
     };
 }

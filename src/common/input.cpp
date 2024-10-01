@@ -78,6 +78,11 @@ namespace Input
         return _keyDown[keycode];
     }
 
+    void ResetKeyPress(unsigned int keycode)
+    {
+        _keyPressed[keycode] = false;
+    }
+
     bool RightMBDown()
     {
         return glfwGetMouseButton(Engine::GetWindowPointer(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS ? 1 : 0;
