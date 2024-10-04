@@ -1,4 +1,5 @@
 .vscode/*
 build/*
 lib/*
+res/objs/guy.obj
 Maeve

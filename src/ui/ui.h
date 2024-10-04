@@ -4,7 +4,8 @@ namespace UI
 {
     void Initialize();
     void Render();
-    void WindowResize();
+
+    void DrawRect(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
 
     class Menu
     {

@@ -8,13 +8,17 @@
 #include "../../lib/glm/glm.hpp"
 
 #include "text_renderer.h"
+#include "../ui/ui.h"
 #include "../common/shader.h"
 #include "../common/stat_counter.h"
 #include "../engine/asset_manager.h"
+#include "../engine/render_engine.h"
 
 namespace Text
 {
-    std::unique_ptr<Shader> _textShader;
+    void Resize(int width, int height);
+
+    std::unique_ptr<Shader> textShader;
     uint _textVAO, _textVBO;
 
     float globalTextScale = 1.0f;
@@ -44,7 +48,7 @@ namespace Text
         return width;
     }
 
-    float CalculateMaxTextHeight(std::string text, float scale, bool includeDescent)
+    float CalculateMaxTextHeight(std::string text, float scale, bool onlyDescent)
     {
         float _scale = scale * globalTextScale;
 
@@ -62,24 +66,32 @@ namespace Text
 
             maxAscent  = glm::max(maxAscent,  ascent);
             maxDescent = glm::max(maxDescent, descent);
-            std::cout << static_cast<char>(*c) << " ascent: " << ascent << " descent: " << descent << " height: " << height << "\n";
+            //std::cout << static_cast<char>(*c) << " ascent: " << ascent << " descent: " << descent << " height: " << height << "\n";
         }
         
-        if (includeDescent) return (maxAscent) * _scale;
-        else return (maxAscent) * _scale;
+        if (!onlyDescent) return (maxAscent) * _scale;
+        else return (maxDescent) * _scale;
     }
 
-    void Render(std::string text, float x, float y, float scale)
+    void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color)
     {
-        Render(text, x, y, scale, glm::vec3(0.9f));
+        Render(text, x - CalculateTextWidth(text, scale) / 2.0f, y, scale, color);
+    }
+
+    void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color, glm::vec3 bgColor)
+    {
+        glm::ivec2 topRight(x + Text::CalculateTextWidth(text, scale) / 2.0f, y + Text::CalculateMaxTextHeight(text, scale));
+        UI::DrawRect(topRight, glm::ivec2(x - topRight.x + x, y), glm::vec3(0.05f));
+        
+        Render(text, x - CalculateTextWidth(text, scale) / 2.0f, y, scale, color);
     }
 
     void Render(std::string text, float x, float y, float scale, glm::vec3 color)
     {
         float _scale = scale * globalTextScale;
 
-        _textShader->Use();
-        _textShader->SetVector3("color", color);
+        textShader->Use();
+        textShader->SetVector3("color", color);
 
         glActiveTexture(GL_TEXTURE0);
         glBindVertexArray(_textVAO);
@@ -132,8 +144,9 @@ namespace Text
 
     void Initialize()
     {
-        _textShader = std::make_unique<Shader>("/../res/shaders/text");
-        WindowResize();
+        Engine::RegisterResizeCallback(Resize);
+
+        textShader = std::make_unique<Shader>("/../res/shaders/ui/text");
 
         FT_Library library;
         if (FT_Init_FreeType(&library))
@@ -141,7 +154,7 @@ namespace Text
             std::cout << "Couldn't initialize Freetype library :(" << std::endl;
         }
 
-        std::string fontPath = Statistics::ProjectPath + "/../res/fonts/DroidSansMono.ttf";
+        std::string fontPath = Statistics::ProjectPath + "/../res/fonts/Cascadia.ttf";
 
         FT_Face face;
         if (FT_New_Face(library, fontPath.c_str(), 0, &face))
@@ -214,9 +227,9 @@ namespace Text
         glBindVertexArray(0);
     }
 
-    void WindowResize()
+    void Resize(int width, int height)
     {
-        _textShader->Use();
-        _textShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
+        textShader->Use();
+        textShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
     }
 }

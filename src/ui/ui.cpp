@@ -25,6 +25,8 @@ namespace UI
         hm_Qk
     };
 
+    void Resize(int width, int height);
+
     void MainMenu(float xoffset, float yoffset, const Menu &submenu);
     
     void SceneManager(float xoffset, float yoffset, const Menu &submenu);
@@ -33,7 +35,6 @@ namespace UI
     void AssetManager(float xoffset, float yoffset, const Menu &submenu);
 
     void DrawSubMenuList(float xoffset, float yoffset, int nums, const Menu &submenu, void (*func)(float _xoffset, float _yoffset, const Menu &_submenu));
-    void DrawRect(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
     void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
 
     std::unique_ptr<Shader> UIshader, defocusShader;
@@ -89,6 +90,8 @@ namespace UI
     float m_timer = 0.0f;
     void Render()
     {
+        glDisable(GL_DEPTH_TEST);
+
         if (Input::KeyPressed(GLFW_KEY_TAB))
         {
             if (inMenu)
@@ -107,12 +110,12 @@ namespace UI
         if (Input::KeyPressed(GLFW_KEY_PERIOD))
         {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() + 0.2f);
-            WindowResize();
+            Resize(0, 0);
         }
         if (Input::KeyPressed(GLFW_KEY_COMMA))
         {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() - 0.2f);
-            WindowResize();
+            Resize(0, 0);
         }
 
         if (Input::KeyDown(GLFW_KEY_LEFT_SHIFT) && Input::KeyPressed(GLFW_KEY_SPACE) && inMenu == false)
@@ -181,6 +184,8 @@ namespace UI
             Text::Render("In SubMenu: " + std::to_string(inSubMenu), 25, 45, 0.45f);
             if (inSubMenu) Text::Render("SubMenu Active Item: " + std::to_string(subMenus[mainMenu.ActiveSubMenu].ActiveSubMenu), 25, 25, 0.45f);
         }
+
+        glEnable(GL_DEPTH_TEST);
     }
 
 
@@ -400,8 +405,10 @@ namespace UI
 
     void Initialize()
     {
-        UIshader      = std::make_unique<Shader>("/../res/shaders/ui");
-        defocusShader = std::make_unique<Shader>("/../res/shaders/defocus");
+        Engine::RegisterResizeCallback(Resize);
+
+        UIshader      = std::make_unique<Shader>("/../res/shaders/ui/ui");
+        defocusShader = std::make_unique<Shader>("/../res/shaders/ui/defocus");
 
         glGenVertexArrays(1, &menuVAO);
         glGenBuffers(1, &menuVBO);
@@ -434,10 +441,10 @@ namespace UI
         subMenus[4] = qk;
     }
 
-    void WindowResize()
+    void Resize(int width, int height)
     {
-        titleHeight = Text::CalculateMaxTextHeight("A", TitleBarTextScaling, true) + TitleBarPaddingYPX * 2;
-        itemHeightPX = Text::CalculateMaxTextHeight("A", ItemTextScaling, true) + ItemPaddingYPX * 2;
+        titleHeight = Text::CalculateMaxTextHeight("A", TitleBarTextScaling) + TitleBarPaddingYPX * 2;
+        itemHeightPX = Text::CalculateMaxTextHeight("A", ItemTextScaling) + ItemPaddingYPX * 2;
         centerX = Engine::GetWindowSize().x / 2.0f;
         centerY = Engine::GetWindowSize().y / 2.0f;
         

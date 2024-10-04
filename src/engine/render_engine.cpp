@@ -10,38 +10,51 @@
 #include "render_engine.h"
 #include "asset_manager.h"
 #include "scene_manager.h"
+#include "deferred/deffered_manager.h"
 
 #include "../common/qk.h"
 
 namespace Engine
 {
-    GLFWwindow* _window = NULL;
-    int _windowWidth    = 1920;
-    int _windowHeight   = 1080;
-    int _monitorWidth   = 0;
-    int _monitorHeight  = 0;
+    GLFWwindow* window = NULL;
+    int windowWidth    = 1920;
+    int windowHeight   = 1080;
+    int monitorWidth   = 0;
+    int monitorHeight  = 0;
 
-    bool _fullscreen              = false;
-    int _unfullscreenWindowWidth  = 1280;
-    int _unfullscreenWindowHeight = 720;
-    int _unfullscreenwindowPosX   = 0;
-    int _unfullscreenwindowPosY   = 0;
+    bool isFullscreen            = false;
+    int unfullscreenWindowWidth  = 512;
+    int unfullscreenWindowHeight = 512;
+    int unfullscreenwindowPosX   = 0;
+    int unfullscreenwindowPosY   = 0;
+
+    std::vector<std::function<void(int, int)>> resizeCallbacks;
 
     void SomeStats();
+    void errorCallback(int error, const char* description);
     
-    void _windowResized(GLFWwindow* window, int width, int height)
+    void windowResized(GLFWwindow* window, int width, int height)
     {
-        _windowWidth  = width;
-        _windowHeight = height;
-
         glViewport(0, 0, width, height);
 
-        AssetManager::UpdateOrthoProjMat4(width, height);
+        windowWidth  = width;
+        windowHeight = height;
+        
+        for (const auto& callback : resizeCallbacks)
+        {
+            callback(width, height);
+        }
     }
 
-    void error_callback(int error, const char* description)
+    void RegisterResizeCallback(const std::function<void(int, int)> &callback)
     {
-        fprintf(stderr, "Error: %s\n", description);
+        resizeCallbacks.push_back(callback);
+    }
+
+    void windowMaximized(GLFWwindow* window, int maximized)
+    {
+        glfwGetWindowSize(window, &windowWidth,& windowHeight);
+        windowResized(window, windowWidth, windowHeight);
     }
 
     void Initialize()
@@ -52,19 +65,20 @@ namespace Engine
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-            glfwWindowHint(GLFW_SAMPLES, 4);
         
-            _window = glfwCreateWindow(_windowWidth, _windowHeight, "Maeve 0.0.1", NULL, NULL);
-            glfwMakeContextCurrent(_window);
-            glfwSetErrorCallback(error_callback);
-            glfwSetFramebufferSizeCallback(_window, _windowResized);
+            window = glfwCreateWindow(windowWidth, windowHeight, "Maeve 0.0.1", NULL, NULL);
+            glfwMakeContextCurrent(window);
+            glfwSetErrorCallback(errorCallback);
+            glfwSetFramebufferSizeCallback(window, windowResized);
+            glfwSetWindowMaximizeCallback(window, windowMaximized);
 
-            // glfwSetWindowAttrib(_window, GLFW_DECORATED, false);
+            //  glfwSetWindowAttrib(window, GLFW_DECORATED, false);
 
+            // Center Window
             const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-             _monitorWidth  = mode->width;
-             _monitorHeight = mode->height;
-            glfwSetWindowPos(_window, _monitorWidth / 2 - _windowWidth / 2, _monitorHeight / 2 - _windowHeight / 2);
+            monitorWidth  = mode->width;
+            monitorHeight = mode->height;
+            glfwSetWindowPos(window, monitorWidth / 2 - windowWidth / 2, monitorHeight / 2 - windowHeight / 2);
         }
         else
         {
@@ -81,100 +95,97 @@ namespace Engine
             glfwTerminate();
         }
 
-        glEnable(GL_MULTISAMPLE);
+        glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         
-        float col = 0.12;
-        glClearColor(col, col, col, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glLineWidth(4);
 
         Statistics::Initialize();
         Input::Initialize();
         Text::Initialize();
         UI::Initialize();
-        AssetManager::Initialize(_windowWidth, _windowHeight);
+        AssetManager::Initialize();
+        Deferred::CreateFBO(windowWidth, windowHeight);
 
-        ToggleFullscreen();
+        windowResized(window, windowWidth, windowHeight);
     }
 
-    float yOffset     = 30;
-    float textScaling = 0.45f;
+    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     void NewFrame(float fov, glm::mat4 vMat, glm::vec3 cPos)
     {
         glfwPollEvents();
-        
         Input::Update();
-        if (Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(_window, true);
-        if (Input::KeyPressed(GLFW_KEY_F11)) Engine::ToggleFullscreen();
-        if (Input::KeyPressed(GLFW_KEY_R)) AssetManager::BPhongShader->Reload();
+        
+        if (Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+        if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
 
+        glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetFBO());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        glDrawBuffers(3, buffers);
+        glDisable(GL_BLEND);
         SceneManager::RenderAll(fov, vMat, cPos);
+        SceneManager::Objects[1].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 100 * Statistics::GetDeltaTime(), 0));
+        glEnable(GL_BLEND);
 
-        SomeStats();
-        
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GNormal));
+        Deferred::VisualizeGBuffers();
+
+        // UI stuff
         UI::Render();
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        glEnable(GL_DEPTH_TEST);
-
-        Statistics::Count(glfwGetTime());
         
-        glfwSwapBuffers(_window);
+        Statistics::Count(glfwGetTime());
+        SomeStats();
+
+        glfwSwapBuffers(window);
     }
 
     void Quit()
     {
+        glDeleteFramebuffers(1, &Deferred::GetFBO());
         glfwTerminate();
-    }
-
-    GLFWwindow* GetWindowPointer()
-    {
-        return _window;
-    }
-
-    glm::ivec2 GetWindowSize()
-    {
-        return glm::ivec2(_windowWidth, _windowHeight);
-    }
-
-    glm::ivec2 GetMonitorSize()
-    {
-        return glm::ivec2(_monitorWidth, _monitorHeight);
     }
 
     void ToggleFullscreen()
     {
         const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-        if (!_fullscreen)
+        if (!isFullscreen)
         {
-            _unfullscreenWindowWidth  = _windowWidth;
-            _unfullscreenWindowHeight = _windowHeight;
-            glfwGetWindowPos(_window, &_unfullscreenwindowPosX, &_unfullscreenwindowPosY);
-            glfwSetWindowMonitor(_window, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, mode->refreshRate);
-            _fullscreen = true;
+            unfullscreenWindowWidth  = windowWidth;
+            unfullscreenWindowHeight = windowHeight;
+            glfwGetWindowPos(window, &unfullscreenwindowPosX, &unfullscreenwindowPosY);
+            glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, mode->refreshRate);
+            isFullscreen = true;
         }
         else
         {
-            glfwSetWindowMonitor(_window, nullptr, _unfullscreenwindowPosX, _unfullscreenwindowPosY, _unfullscreenWindowWidth, _unfullscreenWindowHeight, mode->refreshRate);
-            _fullscreen = false;
+            glfwSetWindowMonitor(window, nullptr, unfullscreenwindowPosX, unfullscreenwindowPosY, unfullscreenWindowWidth, unfullscreenWindowHeight, mode->refreshRate);
+            isFullscreen = false;
         }
     }
+
+    GLFWwindow* GetWindowPointer() { return window; }
+    glm::ivec2 GetWindowSize() { return glm::ivec2(windowWidth, windowHeight); }
+    glm::ivec2 GetMonitorSize() { return glm::ivec2(monitorWidth, monitorHeight); }
+    
+    void errorCallback(int error, const char* description) { fprintf(stderr, "Error: %s\n", description); }
 
     float timer = 0;
     std::string FPS = "";
     std::string ms  = "";
+    float yOffset     = 30;
+    float textScaling = 0.45f;
     void SomeStats()
     {
         std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
         timer += Statistics::GetDeltaTime();
-        if (timer >= (1 / (10.0f)))
+        if (timer >= (1 / (60.0f)))
         {
             timer = 0.0f;
             FPS = std::format<float>("FPS: {:.2f}", Statistics::GetFPS());
@@ -191,5 +202,6 @@ namespace Engine
         Text::Render(ms,                   15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
         Text::Render(meshes,               15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
         Text::Render(objects,              15, Engine::GetWindowSize().y - yOffset - 6 * lineSpacing, textScaling);
+        glEnable(GL_DEPTH_TEST);
     }
 }

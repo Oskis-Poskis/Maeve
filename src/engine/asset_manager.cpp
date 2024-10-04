@@ -2,22 +2,27 @@
 #include <iterator>
 #include <fstream>
 
+#include "../../lib/glad/glad.h"
 #include "asset_manager.h"
+#include "render_engine.h"
 #include "../ui/text_renderer.h"
 #include "../ui/ui.h"
 #include "../common/stat_counter.h"
-#include "../../lib/glad/glad.h"
 
 namespace AssetManager
 {
-    void Initialize(int width, int height)
+    void Resize(int width, int height);
+
+    void Initialize()
     {
-        UpdateOrthoProjMat4(width, height);
+        Engine::RegisterResizeCallback(Resize);
+        Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
 
         AddMeshByData(AssetManager::Presets::PlaneVtxData, AssetManager::Presets::PlaneIndices, "plane");
         AddMeshByData(AssetManager::Presets::CubeVtxData, AssetManager::Presets::CubeIndices, "cube");
         
-        BPhongShader = std::make_unique<Shader>("/../res/shaders/shader");
+        S_GBuffers = std::make_unique<Shader>("/../res/shaders/deferred/gbuffers");
+        S_Lambert = std::make_unique<Shader>("/../res/shaders/lambert");
     }
 
     Mesh::Mesh(std::vector<VtxData> VertexData, std::vector<uint> Indices)
@@ -77,11 +82,9 @@ namespace AssetManager
         Meshes.insert( {Name, Mesh(VertexData, Indices)} );
     }
 
-    void UpdateOrthoProjMat4(int width, int height)
+    void Resize(int width, int height)
     {
         OrthoProjMat4 = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
-        Text::WindowResize();
-        UI::WindowResize();
     }
 
     namespace ObjLoader

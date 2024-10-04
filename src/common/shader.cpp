@@ -85,7 +85,8 @@ void Shader::_createShader()
     }
     catch (std::ifstream::failure e)
     {
-        std::cout << "Error. Shader file not successfully read, " << strerror(errno) << std::endl;
+        std::cout << "Error. Shader file not successfully read, " << strerror(errno) << "\n\n";
+        std::cout << _shaderPath << "\n";
     }
 
     const char* vShaderCode = vertexCode.c_str();

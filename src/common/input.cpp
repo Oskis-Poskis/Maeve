@@ -1,8 +1,8 @@
 #include <iostream>
 
 #include "input.h"
-#include "../engine/render_engine.h"
 #include "stat_counter.h"
+#include "../engine/render_engine.h"
 
 namespace Input
 {

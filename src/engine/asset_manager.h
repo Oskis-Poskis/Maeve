@@ -35,15 +35,15 @@ namespace AssetManager
         Mesh(std::vector<VtxData> VertexData, std::vector<uint> Faces);
     };
 
-    void Initialize(int width, int height);
+    void Initialize();
     void AddMeshByData(std::vector<VtxData> VertexData, std::vector<uint> Faces, std::string Name);
     
     inline std::unordered_map<std::string, Mesh> Meshes;
-    inline std::unique_ptr<Shader> BPhongShader;
+    inline std::unique_ptr<Shader> S_GBuffers;
+    inline std::unique_ptr<Shader> S_Lambert;
     inline int UniqueMeshTriCount;
 
     inline glm::mat4 OrthoProjMat4;
-    void UpdateOrthoProjMat4(int width, int height);
 
     namespace ObjLoader
     {

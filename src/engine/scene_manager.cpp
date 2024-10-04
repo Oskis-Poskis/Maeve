@@ -17,11 +17,11 @@ namespace SceneManager
 
     void RenderAll(float fov, glm::mat4 vMat, glm::vec3 cPos)
     {
-        AssetManager::BPhongShader->Use();
+        AssetManager::S_GBuffers->Use();
         glm::mat4 proj = glm::perspective(glm::radians(fov), (float)Engine::GetWindowSize().x / Engine::GetWindowSize().y, 0.1f, 1000.0f);
-        AssetManager::BPhongShader->SetMatrix4("projection", proj);
-        AssetManager::BPhongShader->SetMatrix4("view", vMat);
-        AssetManager::BPhongShader->SetVector3("viewPos", cPos);
+        AssetManager::S_GBuffers->SetMatrix4("projection", proj);
+        AssetManager::S_GBuffers->SetMatrix4("view", vMat);
+        // AssetManager::S_GBuffers->SetVector3("viewPos", cPos);
 
         for (auto it = AssetManager::Meshes.begin(); it != AssetManager::Meshes.end(); it++)
         {
@@ -32,7 +32,7 @@ namespace SceneManager
             {
                 if (SceneManager::Objects[j].MeshID == it->first)
                 {
-                    AssetManager::BPhongShader->SetMatrix4("model", SceneManager::Objects[j].GetModelMatrix());
+                    AssetManager::S_GBuffers->SetMatrix4("model", SceneManager::Objects[j].GetModelMatrix());
                     if (it->second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
                     else glDrawArrays(GL_TRIANGLES, 0, it->second.TriangleCount * 3);
                 }
@@ -60,11 +60,13 @@ namespace SceneManager
 
     void Object::SetRotation(glm::vec3 Rotation)
     {
-        _rotation = Rotation;
+        glm::vec3 rotOffset = Rotation - _rotation;
+           
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(rotOffset.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(rotOffset.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(rotOffset.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        _rotation = Rotation;
     }
 
     void Object::SetScale(glm::vec3 Scale)

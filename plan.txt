@@ -10,8 +10,14 @@
     List of vertexdata that can be accessed using mesh ID
 }
 
-⦁ Hot reloading ✅
+
+⦁ Shader hot reloading (✅ ish)
+⦁ Shadow Mapping (Variance?)
+⦁ SSAO
+⦁ AABB / OOB / SphereBB
 ⦁ OBJ loading (no indices) ✅
+⦁ Convex Hull generation
+
 ⦁ Input at 60 fps
 ⦁ UI Hot Menus (Tab)
     𐩑 Home ✅
@@ -24,13 +30,10 @@
         𐩑 Materials
         𐩑 Shaders?
     𐩑 Quick Actions (Shift + Q)
-    𐩑 Gradient from selected item
     𐩑 Bigger step with shift, 2 ✅
-⦁ Shadow Mapping (Variance?)
-⦁ SSAO
-⦁ AABB / OOB / SphereBB
-⦁ Convex Hull generation
+    𐩑 Gradient from selected item ✅
 ⦁ Fix Structure, move cameras to asset manager
+
 
 
 // useful

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "../../lib/glm/glm.hpp"
 #include "../../lib/glad/glad.h"
 #include <GLFW/glfw3.h>
@@ -11,6 +13,8 @@ namespace Engine
     glm::ivec2 GetWindowSize();
     glm::ivec2 GetMonitorSize();
     void ToggleFullscreen();
+
+    void RegisterResizeCallback(const std::function<void(int, int)>& callback);
 
     // Running
     void Initialize();
