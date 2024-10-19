@@ -22,7 +22,8 @@ namespace AssetManager
         AddMeshByData(AssetManager::Presets::CubeVtxData, AssetManager::Presets::CubeIndices, "cube");
         
         S_GBuffers = std::make_unique<Shader>("/../res/shaders/deferred/gbuffers");
-        S_Lambert = std::make_unique<Shader>("/../res/shaders/lambert");
+        S_SingleColor = std::make_unique<Shader>("/../res/shaders/singlecolor");
+        S_Lambert  = std::make_unique<Shader>("/../res/shaders/lambert");
     }
 
     Mesh::Mesh(std::vector<VtxData> VertexData, std::vector<uint> Indices)

@@ -18,10 +18,8 @@ namespace SceneManager
     void RenderAll(float fov, glm::mat4 vMat, glm::vec3 cPos)
     {
         AssetManager::S_GBuffers->Use();
-        glm::mat4 proj = glm::perspective(glm::radians(fov), (float)Engine::GetWindowSize().x / Engine::GetWindowSize().y, 0.1f, 1000.0f);
-        AssetManager::S_GBuffers->SetMatrix4("projection", proj);
+        AssetManager::S_GBuffers->SetMatrix4("projection", AssetManager::ProjMat4);
         AssetManager::S_GBuffers->SetMatrix4("view", vMat);
-        // AssetManager::S_GBuffers->SetVector3("viewPos", cPos);
 
         for (auto it = AssetManager::Meshes.begin(); it != AssetManager::Meshes.end(); it++)
         {
@@ -33,6 +31,31 @@ namespace SceneManager
                 if (SceneManager::Objects[j].MeshID == it->first)
                 {
                     AssetManager::S_GBuffers->SetMatrix4("model", SceneManager::Objects[j].GetModelMatrix());
+                    if (it->second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
+                    else glDrawArrays(GL_TRIANGLES, 0, it->second.TriangleCount * 3);
+                }
+            }
+        }
+    }
+
+    void RenderAllWireFrame(float fov, glm::mat4 vMat, glm::vec3 cPos, glm::vec3 color)
+    {
+        AssetManager::S_SingleColor->Use();
+        glm::mat4 proj = glm::perspective(glm::radians(fov), (float)Engine::GetWindowSize().x / Engine::GetWindowSize().y, 0.1f, 1000.0f);
+        AssetManager::S_SingleColor->SetMatrix4("projection", proj);
+        AssetManager::S_SingleColor->SetMatrix4("view", vMat);
+        AssetManager::S_SingleColor->SetVector3("color", color);
+
+        for (auto it = AssetManager::Meshes.begin(); it != AssetManager::Meshes.end(); it++)
+        {
+            int numElements = it->second.TriangleCount * 3;
+            glBindVertexArray(it->second.VAO);
+
+            for (int j = 0; j < SceneManager::Objects.size(); j++)
+            {
+                if (SceneManager::Objects[j].MeshID == it->first)
+                {
+                    AssetManager::S_SingleColor->SetMatrix4("model", SceneManager::Objects[j].GetModelMatrix());
                     if (it->second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
                     else glDrawArrays(GL_TRIANGLES, 0, it->second.TriangleCount * 3);
                 }

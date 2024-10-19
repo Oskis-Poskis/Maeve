@@ -10,15 +10,19 @@
     List of vertexdata that can be accessed using mesh ID
 }
 
-
+// Rendering
+⦁ Light objects
 ⦁ Shader hot reloading (✅ ish)
-⦁ Shadow Mapping (Variance?)
 ⦁ SSAO
-⦁ AABB / OOB / SphereBB
+⦁ Texture loading
+⦁ Shadow Mapping (Variance?)
 ⦁ OBJ loading (no indices) ✅
+⦁ AABB / OOB / SphereBB
 ⦁ Convex Hull generation
 
-⦁ Input at 60 fps
+// Engine
+⦁ OBject Outlines
+⦁ Input at 60 fps ✅
 ⦁ UI Hot Menus (Tab)
     𐩑 Home ✅
     𐩑 SceneManager:: (Shift + Space)

@@ -4,10 +4,8 @@ namespace Deferred
 {   
     enum GBuffer
     {
-        GCombined,
-        GAlbedo, GRoughness,
+        GAlbedo,
         GNormal,
-        GPosition,
         GDepthStencil,
     };
 
@@ -17,5 +15,6 @@ namespace Deferred
 
     void DrawFullscreenQuad(unsigned int texture);
     void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture);
+    void CalculatePBR(glm::vec3 camPos);
     void VisualizeGBuffers();
 }

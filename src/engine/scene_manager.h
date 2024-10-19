@@ -41,4 +41,5 @@ namespace SceneManager
     void CalculateObjectsTriCount();
     void AddObject(Object Object);
     void RenderAll(float fov, glm::mat4 vMat, glm::vec3 cPos);
+    void RenderAllWireFrame(float fov, glm::mat4 vMat, glm::vec3 cPos, glm::vec3 color);
 };

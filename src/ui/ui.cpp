@@ -28,13 +28,9 @@ namespace UI
     void Resize(int width, int height);
 
     void MainMenu(float xoffset, float yoffset, const Menu &submenu);
-    
-    void SceneManager(float xoffset, float yoffset, const Menu &submenu);
     void SceneManagerChild(std::string title, float xoffset, float yoffset);
-    
-    void AssetManager(float xoffset, float yoffset, const Menu &submenu);
 
-    void DrawSubMenuList(float xoffset, float yoffset, int nums, const Menu &submenu, void (*func)(float _xoffset, float _yoffset, const Menu &_submenu));
+    void DrawList(float xoffset, float yoffset, std::vector<std::string> items, const Menu &submenu, bool gradient = false);
     void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
 
     std::unique_ptr<Shader> UIshader, defocusShader;
@@ -62,11 +58,13 @@ namespace UI
     float ItemTextScaling = 0.475f;
     int   ItemPaddingXPX  = 25;
     int   ItemPaddingYPX  = 8;
-    int   ItemSelectionThickness = 3;
-    int   NumItemDistanceShade = 4;
+    int   ItemSelectionThickness = 4;
+    int   ItemDistanceShade = 5;
+    float ItemShadePct(0.5f);
     glm::vec3 ItemColor(0.15f);
     glm::vec3 ItemTextActive   = glm::vec3(1.0f);
     glm::vec3 ItemTextInactive = glm::vec3(122, 119, 126) / 256.0f;
+
     // Item Selection modifier
     int stepMultiplier = 3;
 
@@ -145,7 +143,7 @@ namespace UI
             float yoffset = itemHeightPX * subMenus[index].ActiveSubMenu;
 
             const Menu &submenu = subMenus[index];
-            DrawSubMenuList(0, yoffset, SceneManager::Objects.size(), submenu, &SceneManager);
+            //DrawList(0, yoffset, SceneManager::Objects.size(), submenu, &SceneManager);
 
             if (Input::KeyPressed(GLFW_KEY_LEFT))
             {
@@ -159,7 +157,7 @@ namespace UI
         if (inMenu)
         {   
             m_timer += Statistics::GetDeltaTime();
-            if (m_timer >= (1 / 15.0f))
+            if (m_timer >= (1 / 12.0f))
             {
                 m_timer = 0.0f;
                 if (Input::KeyDown(GLFW_KEY_UP) || Input::KeyPressed(GLFW_KEY_UP)) if (!inSubMenu) mainMenu.ActiveSubMenu = glm::clamp(mainMenu.ActiveSubMenu - 1, 0, (int)subMenus.size() - 1);
@@ -227,23 +225,30 @@ namespace UI
 
             if (Title == "Scene Manager")
             {
+                std::vector<std::string> items;
+                int i = 0;
+                for (SceneManager::Object &obj : SceneManager::Objects)
+                {
+                    items.push_back(obj.GetName());
+                }
+
                 int index = 0;
-                subMenus[index].Input(SceneManager::Objects.size());
-                
                 float yoffset = itemHeightPX * subMenus[index].ActiveSubMenu;
 
                 const Menu &submenu = subMenus[index];
-                DrawSubMenuList(xoffset, yoffset, SceneManager::Objects.size(), submenu, &SceneManager);
-                // DrawSubMenuList(xoffset * 3, 0, AssetManager::Meshes.size(), submenu, &AssetManager);
-                SceneManagerChild(SceneManager::Objects[subMenus[index].ActiveSubMenu].GetName(), xoffset * 3, 0);
+                DrawList(xoffset, yoffset, items, submenu, true);
+                subMenus[index].Input(items.size());
+                //SceneManagerChild(SceneManager::Objects[subMenus[index].ActiveSubMenu].GetName(), xoffset * 3, 0);
             }
             else if (Title == "Asset Manager")
             {
+                std::vector<std::string> items{"Meshes", "Textures", "Materials", "Shaders"};
+
                 int index = 1;
-                subMenus[index].Input(AssetManager::Meshes.size());
 
                 const Menu &submenu = subMenus[index];
-                DrawSubMenuList(xoffset, 0, AssetManager::Meshes.size(), submenu, &AssetManager);
+                DrawList(xoffset, 0, items, submenu);
+                subMenus[index].Input(items.size());
             }
         }
         else
@@ -270,7 +275,7 @@ namespace UI
             float itemShade = (i == submenu.ActiveSubMenu) ? 1.0f : 0.5f;
             
             DrawRect(glm::vec2(right_edge - xoffset, top_edge - titleHeight - itemHeightPX * i),
-                        glm::vec2(left_edge  - xoffset, top_edge - titleHeight - itemHeightPX * (i + 1)), ItemColor * itemShade);
+                     glm::vec2(left_edge  - xoffset, top_edge - titleHeight - itemHeightPX * (i + 1)), ItemColor * itemShade);
             glm::vec3 col = (i == submenu.ActiveSubMenu) ? ItemTextActive : ItemTextInactive;
             
             Text::Render(subMenus[i].Title, centerX - submenu.MenuWidth / 2.0f + ItemPaddingXPX - xoffset,
@@ -295,70 +300,50 @@ namespace UI
         }
     }
 
-    void SceneManager(float xoffset, float yoffset, const Menu &submenu)
-    {
-        for (int i = 0; i < SceneManager::Objects.size(); i++)
-        {
-            float distance  = ((NumItemDistanceShade - glm::abs(submenu.ActiveSubMenu - i)) / (float)NumItemDistanceShade);
-            float itemShade = distance * distance * distance;
-            itemShade = glm::pow(itemShade, 1.0f / 2.2f);
-            
-            DrawRect(glm::vec2(right_edge - xoffset, top_edge - titleHeight - itemHeightPX * i + yoffset),
-                     glm::vec2(left_edge  - xoffset, top_edge - titleHeight - itemHeightPX * (i + 1) + yoffset), ItemColor * itemShade);
-
-            glm::vec3 col = (i == submenu.ActiveSubMenu) ? ItemTextActive : ItemTextInactive;
-            Text::Render(SceneManager::Objects[i].GetName(), centerX - submenu.MenuWidth / 2.0f + ItemPaddingXPX - xoffset,
-                         top_edge - titleHeight - itemHeightPX * (i + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
-        }
-    }
-
     float ChildTitleScaling = 0.75f;
     void SceneManagerChild(std::string title, float xoffset, float yoffset)
     {
         // Outline
         DrawRect(glm::vec2(right_edge + OutlineWidth - xoffset, top_edge + OutlineWidth),
-                 glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * 5 - OutlineWidth), OutlineColor);
+                 glm::vec2(left_edge  - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * 5 - OutlineWidth), OutlineColor);
 
-        // Menu Title
+        // Menu Titles
         DrawRect(glm::vec2(right_edge - xoffset, top_edge),
                  glm::vec2(left_edge  - xoffset, top_edge - titleHeight), glm::vec3(0.2f));
         Text::Render(title, centerX - Text::CalculateTextWidth(title, TitleBarTextScaling) / 2.0f - xoffset,
                      top_edge - titleHeight + TitleBarPaddingYPX, TitleBarTextScaling, ItemTextActive);
     }
 
-    void AssetManager(float xoffset, float yoffset, const Menu &submenu)
-    {
-        int i = 0;
-        for (auto it = AssetManager::Meshes.begin(); it != AssetManager::Meshes.end(); it++)
-        {
-            /* float distance  = ((NumItemDistanceShade - glm::abs(submenu.ActiveSubMenu - i)) / (float)NumItemDistanceShade);
-            float itemShade = distance * distance * distance;
-            itemShade = glm::pow(itemShade, 1.0f / 2.2f); */
-            float itemShade = (i == submenu.ActiveSubMenu) ? 1.0f : 0.5f;
-            
-            DrawRect(glm::vec2(right_edge - xoffset, top_edge - titleHeight - itemHeightPX * i + yoffset),
-                     glm::vec2(left_edge  - xoffset, top_edge - titleHeight - itemHeightPX * (i + 1) + yoffset), ItemColor * itemShade);
-
-            glm::vec3 col = (i == submenu.ActiveSubMenu) ? ItemTextActive : ItemTextInactive;
-            Text::Render(it->first, centerX  - submenu.MenuWidth / 2.0f + ItemPaddingXPX - xoffset,
-                         top_edge - titleHeight - itemHeightPX * (i + 1) + ItemPaddingYPX + yoffset, ItemTextScaling, col);
-            i++;
-        }
-    }
-
-    void DrawSubMenuList(float xoffset, float yoffset, int nums, const Menu &submenu, void (*func)(float _xoffset, float _yoffset, const Menu &_submenu))
+    // void (*func)(float _xoffset, float _yoffset, const Menu &_submenu)
+    void DrawList(float xoffset, float yoffset, std::vector<std::string> items, const Menu &submenu, bool gradient)
     {
         // Outline
         DrawRect(glm::vec2(right_edge + OutlineWidth - xoffset, top_edge + OutlineWidth + yoffset),
-                 glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * nums - OutlineWidth + yoffset), OutlineColor);
+                 glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * items.size() - OutlineWidth + yoffset), OutlineColor);
     
         // Menu Title
         DrawRect(glm::vec2(right_edge - xoffset, top_edge + yoffset),
                  glm::vec2(left_edge  - xoffset, top_edge - titleHeight + yoffset), submenu.ThemeColor);
         Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2.0f - xoffset,
                             top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, TitleBarTextColor);
-        
-        func(xoffset, yoffset, submenu);
+
+        for (int i = 0; i < items.size(); i++)
+        {
+            float itemShade = 1.0f;
+            if (!gradient) itemShade = (i == submenu.ActiveSubMenu) ? 1.0f : ItemShadePct;
+            else
+            {
+                float distance = ((ItemDistanceShade - glm::abs(submenu.ActiveSubMenu - i)) / (float)ItemDistanceShade);
+                itemShade = glm::pow(glm::pow(distance, 3), 1.0f / 2.2f);
+            }
+            
+            DrawRect(glm::vec2(right_edge - xoffset, top_edge - titleHeight - itemHeightPX * i + yoffset),
+                     glm::vec2(left_edge  - xoffset, top_edge - titleHeight - itemHeightPX * (i + 1) + yoffset), ItemColor * itemShade);
+
+            glm::vec3 col = (i == submenu.ActiveSubMenu) ? ItemTextActive : ItemTextInactive;
+            Text::Render(items[i], centerX - submenu.MenuWidth / 2.0f + ItemPaddingXPX - xoffset,
+                         top_edge - titleHeight - itemHeightPX * (i + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+        }
 
         // Selection Marker
         DrawRect(glm::vec2(right_edge - xoffset, top_edge - titleHeight - itemHeightPX * (submenu.ActiveSubMenu) + yoffset),

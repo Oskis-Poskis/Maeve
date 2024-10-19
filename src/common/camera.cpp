@@ -2,6 +2,7 @@
 #include "input.h"
 #include "stat_counter.h"
 #include "../engine/render_engine.h"
+#include "../engine/asset_manager.h"
 
 Camera::Camera() : Position(glm::vec3(0.0f, 0.0f, 0.0f)),
                    _targetPosition(Position),

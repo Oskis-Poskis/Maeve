@@ -40,9 +40,12 @@ namespace AssetManager
     
     inline std::unordered_map<std::string, Mesh> Meshes;
     inline std::unique_ptr<Shader> S_GBuffers;
+    inline std::unique_ptr<Shader> S_SingleColor;
     inline std::unique_ptr<Shader> S_Lambert;
     inline int UniqueMeshTriCount;
 
+    inline glm::mat4 ProjMat4;
+    inline glm::mat4 ViewMat4;
     inline glm::mat4 OrthoProjMat4;
 
     namespace ObjLoader
