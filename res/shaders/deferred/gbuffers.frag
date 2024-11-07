@@ -8,5 +8,5 @@ in vec3 fragPos;
 void main()
 {
     gAlbedo = vec4(vec3(1), 1.0);
-    gNormal = normal;
+    gNormal = normalize(normal);
 }

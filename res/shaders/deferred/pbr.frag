@@ -28,7 +28,7 @@ highp float random(highp vec2 coords) { return fract(sin(dot(coords.xy, vec2(12.
 void main()
 {
     vec3 albedo = texture(GAlbedo, uvs).rgb;
-    vec3 N = mat3(viewMatrix) * normalize(texture(GNormal, uvs).rgb);
+    vec3 N = mat3(viewMatrix) * texture(GNormal, uvs).rgb;
     vec3 P = ViewPosFromDepth();
     vec3 V = normalize(-P);
     

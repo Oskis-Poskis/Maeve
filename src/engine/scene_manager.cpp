@@ -40,6 +40,8 @@ namespace SceneManager
 
     void RenderAllWireFrame(float fov, glm::mat4 vMat, glm::vec3 cPos, glm::vec3 color)
     {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
         AssetManager::S_SingleColor->Use();
         glm::mat4 proj = glm::perspective(glm::radians(fov), (float)Engine::GetWindowSize().x / Engine::GetWindowSize().y, 0.1f, 1000.0f);
         AssetManager::S_SingleColor->SetMatrix4("projection", proj);
@@ -61,6 +63,8 @@ namespace SceneManager
                 }
             }
         }
+        
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     Object::Object(std::string Name, std::string MeshID)

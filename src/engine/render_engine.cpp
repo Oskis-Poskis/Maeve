@@ -74,7 +74,7 @@ namespace Engine
             glfwSetFramebufferSizeCallback(window, windowResized);
             glfwSetWindowMaximizeCallback(window, windowMaximized);
 
-            glfwSetWindowAttrib(window, GLFW_DECORATED, false);
+            //glfwSetWindowAttrib(window, GLFW_DECORATED, false);
             //glfwSwapInterval(0);
 
             // Center Window
@@ -128,9 +128,7 @@ namespace Engine
         SceneManager::RenderAll(fov, vMat, cPos);
         AssetManager::ProjMat4 = glm::perspective(glm::radians(fov), (float)windowWidth / windowHeight, 0.1f, 1000.0f);
         AssetManager::ViewMat4 = vMat;
-        /* glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        SceneManager::RenderAllWireFrame(fov, vMat, cPos, glm::vec3(0.1f));
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); */
+        // SceneManager::RenderAllWireFrame(fov, vMat, cPos, glm::vec3(0.2f));
 
         // Display
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
