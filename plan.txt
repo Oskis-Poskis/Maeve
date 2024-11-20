@@ -1,0 +1,54 @@
+// Basic mesh and object setup ✅
+{
+    // Scene Manager
+    Holds a list of scene objects
+    Each object has transform (pos, rot, scale)
+    Each object has name
+    Each object has a mesh ID for what vertex data it wants
+
+    // Asset Manager
+    List of vertexdata that can be accessed using mesh ID
+}
+
+// Rendering
+⦁ Light objects
+⦁ Shader hot reloading (✅ ish)
+⦁ SSAO
+⦁ Texture loading
+⦁ Shadow Mapping (Variance?)
+⦁ OBJ loading (no indices) ✅
+⦁ OBJ loading, pre-check if it has texturecoords, normals etc
+⦁ AABB / OOB / SphereBB
+⦁ Convex Hull generation
+
+// Engine
+⦁ Object Outlines
+⦁ Input at 60 fps ✅
+⦁ UI Hot Menus (Tab)
+    𐩑 Home ✅
+    𐩑 SceneManager:: (Shift + Space)
+        𐩑 List of objects
+        𐩑 Add new
+    𐩑 AssetManager:: (Ctrl + Space)
+        𐩑 Meshes
+        𐩑 Textures
+        𐩑 Materials
+        𐩑 Shaders?
+    𐩑 Quick Actions (Shift + Q)
+    𐩑 Bigger step with shift, 2 ✅
+    𐩑 Gradient from selected item ✅
+⦁ Fix Structure, move cameras to asset manager
+
+
+// useful
+{
+    // arg to run with nvgpu
+    __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia
+
+    // randomness
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, 2);
+    std::uniform_int_distribution<> distrib360(0, 360);
+    std::string variation[] = {"armadillo", "dragon", "suzanne"};
+}
