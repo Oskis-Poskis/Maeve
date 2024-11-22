@@ -8,7 +8,7 @@ const float PI = 3.14159265359;
 uniform sampler2D GAlbedo;
 uniform sampler2D GNormal;
 uniform sampler2D GDepth;
-uniform vec3      cPos;
+uniform vec3      cDir;
 uniform mat4 iProjMatrix;
 uniform mat4 viewMatrix;
 
@@ -20,25 +20,14 @@ highp float random(highp vec2 coords) { return fract(sin(dot(coords.xy, vec2(12.
 void main()
 {
     vec3 albedo = texture(GAlbedo, uvs).rgb;
-    vec3 N = texture(GNormal, uvs).rgb;
-    vec3 P = ViewPosFromDepth();
-    vec3 V = normalize(-P);
+    vec3 normal = texture(GNormal, uvs).rgb;
+    vec3 viewPosition = ViewPosFromDepth();
+    vec3 viewDir = mat3(viewMatrix) * cDir;
+    vec3 lightDir = mat3(viewMatrix) * vec3(1, 1, 0.5);
 
-    vec3 VSLightPos = (viewMatrix * vec4(0, 8, 2, 1)).xyz;
-    vec3 L = normalize(VSLightPos - P);
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 final = albedo * (diff);
 
-    float distance    = length(VSLightPos - P);
-    float attenuation = 1.0 / (distance * distance);
-
-    float specularStrength = 0.5;
-    vec3 halfwayDir = normalize(L + V);
-    float spec = pow(max(dot(N, halfwayDir), 0.0), 80);
-    float specular = specularStrength * spec;
-
-    float diff = max(dot(N, L), 0.0);
-
-    vec3 final = albedo * (diff + specular);
-    final *= attenuation;
     final = final / (final + 1.0);
     final = pow(final, vec3(1.0 / 2.2));
     final += mix(-NoiseCalc, NoiseCalc, random(uvs));
