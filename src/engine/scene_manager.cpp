@@ -48,43 +48,38 @@ namespace SceneManager
         _modelMatrix = glm::mat4(1.0);
         _meshID = MeshID;
 
-        SetModelMatrix(glm::vec3(0), glm::vec3(0), glm::vec3(1));
+        ReconstructMat4();
     }
 
     void Object::SetPosition(glm::vec3 Position)
     {
-        glm::vec3 posOffset = Position - _position;
-
         _position = Position;
-
-        SetModelMatrix(posOffset, glm::vec3(0), glm::vec3(1));
+        ReconstructMat4();
     }
 
     void Object::SetRotation(glm::vec3 Rotation)
     {
-        glm::vec3 rotOffset = Rotation - _rotation;
         _rotation = Rotation;
-
-        SetModelMatrix(glm::vec3(0), rotOffset, glm::vec3(1));
+        ReconstructMat4();
     }
 
     void Object::SetScale(glm::vec3 Scale)
     {
-        glm::vec3 scaleOffset = Scale - _scale;
         _scale = Scale;
-
-        SetModelMatrix(glm::vec3(0), glm::vec3(0), scaleOffset);
+        ReconstructMat4();
     }
 
-    void Object::SetModelMatrix(glm::vec3 PosOffset, glm::vec3 RotOffset, glm::vec3 ScaleOffset)
+    void Object::ReconstructMat4()
     {
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(RotOffset.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(RotOffset.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(RotOffset.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::mat4 identity(1.0f);
 
-        _modelMatrix = glm::translate(_modelMatrix, PosOffset);
-        
-        _modelMatrix = glm::scale(_modelMatrix, ScaleOffset);
+        _modelMatrix = glm::scale(identity, _scale);
+
+        _modelMatrix = glm::translate(_modelMatrix, _position);
+
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
     }
 
     void Object::SetName(std::string Name)
@@ -117,7 +112,7 @@ namespace SceneManager
         return _meshID;
     }
 
-    glm::mat4 Object::GetModelMatrix()
+    glm::mat4 &Object::GetModelMatrix()
     {
         return _modelMatrix;
     }

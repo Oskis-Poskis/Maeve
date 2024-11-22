@@ -49,13 +49,13 @@ namespace Text
         return width;
     }
 
-    float CalculateMaxTextHeight(std::string text, float scale, bool onlyDescent)
+    float CalculateMaxTextHeight(std::string text, float scale)
     {
         float _scale = scale * globalTextScale;
 
-        float maxheight = 0;
-        int maxAscent   = 0;
-        int maxDescent  = 0;
+        float maxheight  = 0;
+        int   maxAscent  = 0;
+        int   maxDescent = 0;
 
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
@@ -67,11 +67,9 @@ namespace Text
 
             maxAscent  = glm::max(maxAscent,  ascent);
             maxDescent = glm::max(maxDescent, descent);
-            //std::cout << static_cast<char>(*c) << " ascent: " << ascent << " descent: " << descent << " height: " << height << "\n";
         }
         
-        if (!onlyDescent) return (maxAscent) * _scale;
-        else return (maxDescent) * _scale;
+        return (maxAscent) * _scale;
     }
 
     void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color)
@@ -163,7 +161,7 @@ namespace Text
             std::cout << "Failed to load font\n";
         }
 
-        FT_Set_Pixel_Sizes(face, 0, 48);
+        FT_Set_Pixel_Sizes(face, 0, 34);
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 

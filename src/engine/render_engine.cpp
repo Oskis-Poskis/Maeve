@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <format>
+#include <random>
 
 #include "render_engine.h"
 #include "asset_manager.h"
@@ -30,7 +31,6 @@ namespace Engine
     std::vector<std::function<void(int, int)>> resizeCallbacks;
     std::vector<std::function<void()>> editorFunctions;
 
-    void DrawStats();
     void errorCallback(int error, const char* description);
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
     
@@ -52,22 +52,13 @@ namespace Engine
         Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GNormal));
         Deferred::VisualizeGBuffers();
         UI::Render();
-        DrawStats();
+        Statistics::DrawStats();
 
         glfwSwapBuffers(window);
-
-        // std::cout << "Resized window to " << windowWidth << "x" << windowHeight << "\n\n";
     }
 
-    void RegisterResizeCallback(const std::function<void(int, int)> &callback)
-    {
-        resizeCallbacks.push_back(callback);
-    }
-
-    void RegisterEditorFunction(const std::function<void()>& func)
-    {
-        editorFunctions.push_back(func);
-    }
+    void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
+    void RegisterEditorFunction(const std::function<void()>& func) { editorFunctions.push_back(func); }
 
     void windowMaximized(GLFWwindow* window, int maximized)
     {
@@ -77,9 +68,14 @@ namespace Engine
 
     void Initialize()
     {
+        std::cout << "\n";
+        std::cout << "[>] " + std::string(70, '-') + "\n";
+        std::cout << "[.] Maeve booting up...\n";
+        std::cout << "[>] " + std::string(70, '-') + "\n\n";
+
         if (glfwInit())
         {
-            std::cout << "Successfully initialized GLFW" << std::endl;
+            std::cout << "[:] Successfully initialized GLFW\n";
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
@@ -100,12 +96,12 @@ namespace Engine
             monitorHeight = mode->height;
             glfwSetWindowPos(window, monitorWidth / 2 - windowWidth / 2, monitorHeight / 2 - windowHeight / 2);
         }
-        else std::cout << "Couldn't initialize GLFW" << std::endl;
+        else std::cout << "[:] Couldn't initialize GLFW\n\n";
 
-        if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) std::cout << "Successfully loaded GLAD\n" << std::endl;
+        if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) std::cout << "[:] Successfully loaded GLAD\n\n";
         else
         {
-            std::cout << "Couldn't load GLAD" << std::endl;
+            std::cout << "[:] Couldn't load GLAD\n\n";
             glfwTerminate();
         }
 
@@ -140,6 +136,13 @@ namespace Engine
     }
 
     int it = 0;
+    int num = 10;
+    int spacing = 3;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, 0);
+
     const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     void NewFrame()
     {
@@ -149,12 +152,19 @@ namespace Engine
         
         if (Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
-        if (Input::KeyPressed(GLFW_KEY_P))
+        if (Input::KeyDown(GLFW_KEY_P) && it < (num * num * num))
         {
-            it++;
-            SceneManager::Object itobj("name" + std::to_string(it), "loadedmodel");
-            itobj.SetPosition(glm::vec3(3 * it, 3, 0));
+            int xdir = it % num;
+            int ydir = (it / num) % num;
+            int zdir = it /(num * num);
+
+            std::string mesh = "loadedmodel" + std::to_string(distrib(gen));
+
+            SceneManager::Object itobj(mesh + std::to_string(it), mesh);
+            itobj.SetPosition(glm::vec3(xdir * spacing - ((num - 1) * spacing) / 2.0f, ydir * spacing + spacing, zdir * spacing - ((num - 1) * spacing) / 2.0f));
             SceneManager::AddObject(itobj);
+
+            it++;
         }
 
         // GBuffers
@@ -163,6 +173,11 @@ namespace Engine
         glDrawBuffers(2, buffers);
 
         //SceneManager::Objects[1].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 100 * Statistics::GetDeltaTime(), 0));
+        for (int i = 1; i < SceneManager::Objects.size(); i++)
+        {
+            SceneManager::Objects[i].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 30 * Statistics::GetDeltaTime(), 0));
+        }
+
         SceneManager::RenderAll();
         AssetManager::ViewMat4 = AssetManager::EditorCam.GetViewMatrix();
 
@@ -177,7 +192,7 @@ namespace Engine
         UI::Render();
         
         Statistics::Count(glfwGetTime());
-        DrawStats();
+        Statistics::DrawStats();
         glDisable(GL_BLEND);
 
         glfwSwapBuffers(window);
@@ -210,44 +225,7 @@ namespace Engine
     void errorCallback(int error, const char* description) { fprintf(stderr, "Error: %s\n", description); }
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     {
-        AssetManager::EditorCam.Speed = glm::clamp(AssetManager::EditorCam.Speed + (float)yoffset, 0.1f, 30.0f);
-    }
-
-    float yOffset     = 30;
-    float textScaling = 0.35f;
-    float timer = 0;
-    std::string FPS, ms = "";
-
-    float avgfps = 60.0f;
-    float avgms  = 0.016f;
-    float alpha = 0.95f;
-    void DrawStats()
-    {
-        std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
-        timer += Statistics::GetDeltaTime();
-        if (timer >= (1 / (60.0f)))
-        {
-            timer = 0.0f;
-            
-            avgfps = alpha * avgfps + (1.0f - alpha) * Statistics::GetFPS();
-            avgms  = alpha * avgms + (1.0f - alpha) * Statistics::GetMS();
-
-            FPS = std::format("{:<4} {:>7.2f}", "FPS:", avgfps);
-            ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
-        }
-
-        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AssetManager::Meshes.size(), qk::FmtK(AssetManager::UniqueMeshTriCount));
-        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::FmtK(SceneManager::ObjectsTriCount));
-        
-        glDisable(GL_DEPTH_TEST);
-        float lineSpacing = 20 * Text::GetGlobalTextScaling();
-        Text::Render(Statistics::Renderer,                              15, windowHeight - yOffset - 0 * lineSpacing, textScaling);
-        Text::Render("Window Size: " + qk::FormatVec(GetWindowSize()),  15, windowHeight - yOffset - 1 * lineSpacing, textScaling);
-        Text::Render(FPS,                                               15, windowHeight - yOffset - 3 * lineSpacing, textScaling);
-        Text::Render(ms,                                                15, windowHeight - yOffset - 4 * lineSpacing, textScaling);
-        Text::Render(memory,                                            15, windowHeight - yOffset - 5 * lineSpacing, textScaling);
-        Text::Render(meshes,                                            15, windowHeight - yOffset - 7 * lineSpacing, textScaling);
-        Text::Render(objects,                                           15, windowHeight - yOffset - 8 * lineSpacing, textScaling);
-        glEnable(GL_DEPTH_TEST);
+        AssetManager::EditorCam.Speed = glm::clamp(AssetManager::EditorCam.Speed + (float)yoffset, 5.0f, 30.0f);
+        std::cout << AssetManager::EditorCam.Speed << "\n";
     }
 }

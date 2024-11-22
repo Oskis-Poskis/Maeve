@@ -1,10 +1,17 @@
 #include <iostream>
 #include <filesystem>
+#include <format>
 
-#include "stat_counter.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <GL/glext.h>
+
+#include "stat_counter.h"
+#include "../engine/render_engine.h"
+#include "../engine/asset_manager.h"
+#include "../engine/scene_manager.h"
+#include "../ui/text_renderer.h"
+#include "../common/qk.h"
 
 namespace Statistics
 {
@@ -22,6 +29,44 @@ namespace Statistics
 
         _fps = (1.0f / _deltaTime);
         _ms  = (1000.0f / (1.0f / _deltaTime));
+    }
+
+    float yOffset       = 26;
+    float textScaling   = 0.5f;
+    float timer         = 0;
+    std::string FPS, ms = "";
+
+    float avgfps = 60.0f;
+    float avgms  = 0.016f;
+    float alpha  = 0.95f;
+    void DrawStats()
+    {
+        std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
+        timer += Statistics::GetDeltaTime();
+        if (timer >= (1 / (60.0f)))
+        {
+            timer = 0.0f;
+            
+            avgfps = alpha * avgfps + (1.0f - alpha) * Statistics::GetFPS();
+            avgms  = alpha * avgms + (1.0f - alpha) * Statistics::GetMS();
+
+            FPS = std::format("{:<4} {:>7.2f}", "FPS:", avgfps);
+            ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
+        }
+
+        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AssetManager::Meshes.size(), qk::FmtK(AssetManager::UniqueMeshTriCount));
+        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::FmtK(SceneManager::ObjectsTriCount));
+        
+        glDisable(GL_DEPTH_TEST);
+        float lineSpacing = 20 * Text::GetGlobalTextScaling();
+        Text::Render(Statistics::Renderer,                                     15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
+        Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()), 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
+        Text::Render(FPS,                                                      15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
+        Text::Render(ms,                                                       15, Engine::GetWindowSize().y - yOffset - 4 * lineSpacing, textScaling);
+        Text::Render(memory,                                                   15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
+        Text::Render(meshes,                                                   15, Engine::GetWindowSize().y - yOffset - 7 * lineSpacing, textScaling);
+        Text::Render(objects,                                                  15, Engine::GetWindowSize().y - yOffset - 8 * lineSpacing, textScaling);
+        glEnable(GL_DEPTH_TEST);
     }
 
     void Initialize()

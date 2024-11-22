@@ -25,7 +25,7 @@ namespace AssetManager::IO
 
         std::string filePath = qk::CombinedPath(Statistics::ProjectPath, Path);
 
-        std::cout << "Opening obj file: " << filePath << std::endl;
+        std::cout << "[>] Opening obj file: " << filePath << std::endl;
 
         std::vector<unsigned int> positionIndices, uvIndices, normalIndices;
         std::vector<glm::vec3> positions, normals;
@@ -45,7 +45,7 @@ namespace AssetManager::IO
         file.open(filePath);
         if (!file.is_open())
         {
-            std::cout << "Failed to open obj file :(\n";
+            std::cout << "[!] Failed to open obj file :(\n";
             return;
         }
 
@@ -148,7 +148,7 @@ namespace AssetManager::IO
         auto stop = high_resolution_clock::now();
 
         auto duration = duration_cast<microseconds>(stop - start).count();
-        std::cout << "Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n\n";
+        std::cout << "[:] Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n\n";
     }
 
     bool LineStartsWith(std::string line, std::string comp)

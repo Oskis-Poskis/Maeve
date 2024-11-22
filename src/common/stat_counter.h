@@ -13,6 +13,7 @@ namespace Statistics
     float GetDeltaTime();
     int GetVramUsageMb();
     int GetVRAMTotalMb();
-
+    
     void Count(float time);
+    void DrawStats();
 }

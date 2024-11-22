@@ -87,11 +87,18 @@ namespace AssetManager
     void AddMeshByData(std::vector<VtxData> VertexData, std::string Name)
     {
         Meshes.insert( {Name, Mesh(VertexData)} );
+        MeshNames.push_back(Name);
     }
 
     void AddMeshByData(std::vector<VtxData> VertexData, std::vector<unsigned int> Indices, std::string Name)
     {   
         Meshes.insert( {Name, Mesh(VertexData, Indices)} );
+        MeshNames.push_back(Name);
+    }
+    
+    void UpdateMatrices()
+    {
+        Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
     }
 
     void Resize(int width, int height)

@@ -136,7 +136,8 @@ namespace Deferred
     void CalculatePBR(glm::vec3 cPos)
     {
         pbr->Use();
-        pbr->SetVector3("cPos", cPos);
+        pbr->SetVector3("cDir", AssetManager::EditorCam.Front);
+        //std::cout << qk::FormatVec(AssetManager::EditorCam.Front) + "\n";
         pbr->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
         pbr->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
         
@@ -160,21 +161,22 @@ namespace Deferred
     }
 
     float length = 0.25;
+    float textScale = 0.5f;
     void VisualizeGBuffers()
     {
         glDisable(GL_DEPTH_TEST);
 
         DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length), glm::vec2(1.0f - length, 1.0f), Deferred::GetTexture(Deferred::GAlbedo));
         glm::ivec2 pos = qk::NDCToPixel(1.0f - length * 1.5f, 1.0f);
-        Text::RenderCentered("GAlbedo", pos.x, pos.y - Text::CalculateMaxTextHeight("A", 0.4f), 0.4f, glm::vec3(0.9f), glm::vec3(0.05f));
+        Text::RenderCentered("GAlbedo", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length), glm::vec2(1.0f, 1.0f), Deferred::GetTexture(Deferred::GNormal));
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f);
-        Text::RenderCentered("GNormal", pos.x, pos.y - Text::CalculateMaxTextHeight("A", 0.4f), 0.4f, glm::vec3(0.9f), glm::vec3(0.05f));
+        Text::RenderCentered("GNormal", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepthStencil));
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length);
-        Text::RenderCentered("GDepthStencil", pos.x, pos.y - Text::CalculateMaxTextHeight("A", 0.4f), 0.4f, glm::vec3(0.9f), glm::vec3(0.05f));
+        Text::RenderCentered("GDepthStencil", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         glEnable(GL_DEPTH_TEST);
     }

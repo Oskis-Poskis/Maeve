@@ -14,5 +14,5 @@ namespace Text
     void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color, glm::vec3 bgColor = glm::vec3(0.0f));
 
     float CalculateTextWidth(std::string text, float scale);
-    float CalculateMaxTextHeight(std::string text, float scale, bool onlyDescent = false);
+    float CalculateMaxTextHeight(std::string text, float scale);
 }

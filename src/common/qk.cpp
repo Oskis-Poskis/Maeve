@@ -78,8 +78,8 @@ namespace qk
     
     glm::ivec2 NDCToPixel(float x, float y)
     {
-        int new_x = (x + 1.0f) * (Engine::GetWindowSize().x) / 2;
-        int new_y = (y + 1.0f) * (Engine::GetWindowSize().y) / 2;
+        int new_x = (x + 1) * (Engine::GetWindowSize().x) / 2;
+        int new_y = (y + 1) * (Engine::GetWindowSize().y) / 2;
         return glm::ivec2(new_x, new_y);
     }
 }
