@@ -56,8 +56,8 @@ void Shader::SetMatrix4(const std::string &name, glm::mat4 value) const
 
 void Shader::_createShader()
 {
-    std::string fpath = Statistics::ProjectPath + _shaderPath + ".frag";
-    std::string vpath = Statistics::ProjectPath + _shaderPath + ".vert";
+    std::string fpath = Stats::ProjectPath + _shaderPath + ".frag";
+    std::string vpath = Stats::ProjectPath + _shaderPath + ".vert";
 
     std::string vertexCode;
     std::string fragmentCode;

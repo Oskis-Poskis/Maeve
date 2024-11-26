@@ -25,9 +25,9 @@ namespace AssetManager
         AddMeshByData(AssetManager::Presets::PlaneVtxData, AssetManager::Presets::PlaneIndices, "plane");
         AddMeshByData(AssetManager::Presets::CubeVtxData, AssetManager::Presets::CubeIndices, "cube");
         
-        S_GBuffers = std::make_unique<Shader>("/../res/shaders/deferred/gbuffers");
-        S_SingleColor = std::make_unique<Shader>("/../res/shaders/singlecolor");
-        S_Lambert  = std::make_unique<Shader>("/../res/shaders/lambert");
+        S_GBuffers = std::make_unique<Shader>("/res/shaders/deferred/gbuffers");
+        S_SingleColor = std::make_unique<Shader>("/res/shaders/singlecolor");
+        S_Lambert  = std::make_unique<Shader>("/res/shaders/lambert");
 
         EditorCam = Camera(glm::vec3(0.0f, 3.0f, 3.0f), 70, -90.0f, 0.0f);
     }

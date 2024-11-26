@@ -52,9 +52,9 @@ namespace Deferred
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) std::cout << "Deffered Frambuffer successfully initialized\n\n";
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        pbr              = std::make_unique<Shader>("/../res/shaders/deferred/shading");
-        fullscreenShader = std::make_unique<Shader>("/../res/shaders/deferred/fullscreen");
-        screenQuadShader = std::make_unique<Shader>("/../res/shaders/deferred/screenquad");
+        pbr              = std::make_unique<Shader>("/res/shaders/deferred/shading");
+        fullscreenShader = std::make_unique<Shader>("/res/shaders/deferred/fullscreen");
+        screenQuadShader = std::make_unique<Shader>("/res/shaders/deferred/screenquad");
 
         glGenVertexArrays(1, &defferedQuadVAO);
         glGenVertexArrays(1, &screenQuadVAO);

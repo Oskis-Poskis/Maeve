@@ -23,7 +23,7 @@ namespace AssetManager::IO
     {   
         auto start = high_resolution_clock::now();
 
-        std::string filePath = qk::CombinedPath(Statistics::ProjectPath, Path);
+        std::string filePath = qk::CombinedPath(Stats::ProjectPath, Path);
 
         std::cout << "[>] Opening obj file: " << filePath << std::endl;
 

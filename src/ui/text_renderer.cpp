@@ -145,7 +145,7 @@ namespace Text
     {
         Engine::RegisterResizeCallback(Resize);
 
-        textShader = std::make_unique<Shader>("/../res/shaders/ui/text");
+        textShader = std::make_unique<Shader>("/res/shaders/ui/text");
 
         FT_Library library;
         if (FT_Init_FreeType(&library))
@@ -153,7 +153,7 @@ namespace Text
             std::cout << "Couldn't initialize Freetype library :(\n";
         }
 
-        std::string fontPath = qk::CombinedPath(Statistics::ProjectPath, "../res/fonts/Cascadia.ttf");
+        std::string fontPath = qk::CombinedPath(Stats::ProjectPath, "res/fonts/Cascadia.ttf");
 
         FT_Face face;
         if (FT_New_Face(library, fontPath.c_str(), 0, &face))

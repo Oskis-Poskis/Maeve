@@ -52,7 +52,7 @@ namespace Engine
         Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GNormal));
         Deferred::VisualizeGBuffers();
         UI::Render();
-        Statistics::DrawStats();
+        Stats::DrawStats();
 
         glfwSwapBuffers(window);
     }
@@ -78,17 +78,19 @@ namespace Engine
             std::cout << "[:] Successfully initialized GLFW\n";
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
         
             window = glfwCreateWindow(windowWidth, windowHeight, "Maeve 0.0.1", NULL, NULL);
             glfwMakeContextCurrent(window);
+            
             glfwSetErrorCallback(errorCallback);
             glfwSetScrollCallback(window, scrollCallback);
             glfwSetFramebufferSizeCallback(window, windowResized);
             glfwSetWindowMaximizeCallback(window, windowMaximized);
 
             // glfwSetWindowAttrib(window, GLFW_DECORATED, false);
-            glfwSwapInterval(0);
+            // glfwSwapInterval(0);
 
             // Center Window
             const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -114,7 +116,7 @@ namespace Engine
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glLineWidth(2);
 
-        Statistics::Initialize();
+        Stats::Initialize();
         Input::Initialize();
         Text::Initialize();
         UI::Initialize();
@@ -175,7 +177,7 @@ namespace Engine
         //SceneManager::Objects[1].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 100 * Statistics::GetDeltaTime(), 0));
         for (int i = 1; i < SceneManager::Objects.size(); i++)
         {
-            SceneManager::Objects[i].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 30 * Statistics::GetDeltaTime(), 0));
+            SceneManager::Objects[i].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 30 * Stats::GetDeltaTime(), 0));
         }
 
         SceneManager::RenderAll();
@@ -191,8 +193,8 @@ namespace Engine
         Deferred::VisualizeGBuffers();
         UI::Render();
         
-        Statistics::Count(glfwGetTime());
-        Statistics::DrawStats();
+        Stats::Count(glfwGetTime());
+        Stats::DrawStats();
         glDisable(GL_BLEND);
 
         glfwSwapBuffers(window);

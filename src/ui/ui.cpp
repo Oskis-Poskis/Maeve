@@ -142,7 +142,7 @@ namespace UI
         menuShader->Use();
         menuShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
 
-        elapsed = glm::clamp(elapsed + Statistics::GetDeltaTime() * animSpeed, 0.0f, 1.0f);
+        elapsed = glm::clamp(elapsed + Stats::GetDeltaTime() * animSpeed, 0.0f, 1.0f);
         blend = glm::smoothstep(0.0f, 1.0f, elapsed);
         xoffset = glm::mix(0, mainMenu.MenuWidth + OutlineWidth, blend);
 
@@ -173,7 +173,7 @@ namespace UI
     {
         int mult = (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) ? stepMultiplier : 1;
 
-        x_timer += Statistics::GetDeltaTime();
+        x_timer += Stats::GetDeltaTime();
         if (x_timer >= 1 / (5.0f * mult) || Input::KeyPressed(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_LEFT))
         {
             x_timer = 0.0f;
@@ -194,7 +194,7 @@ namespace UI
             }   
         }
 
-        y_timer += Statistics::GetDeltaTime();
+        y_timer += Stats::GetDeltaTime();
         if (y_timer >= 1 / (15.0f * mult))
         {
             y_timer = 0.0f;
@@ -384,8 +384,8 @@ namespace UI
     {
         Engine::RegisterResizeCallback(Resize);
 
-        menuShader      = std::make_unique<Shader>("/../res/shaders/ui/menu");
-        defocusShader = std::make_unique<Shader>("/../res/shaders/ui/defocus");
+        menuShader      = std::make_unique<Shader>("/res/shaders/ui/menu");
+        defocusShader = std::make_unique<Shader>("/res/shaders/ui/defocus");
 
         glGenVertexArrays(1, &menuVAO);
         glGenBuffers(1, &menuVBO);

@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace Statistics
+namespace Stats
 {
     inline std::string Vendor;
     inline std::string Renderer;

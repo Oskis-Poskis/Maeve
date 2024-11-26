@@ -56,7 +56,7 @@ void Camera::MouseInput(float xoffset, float yoffset)
 
 void Camera::KeyboardInput(Movement_Direction direction)
 {
-    float velocity = Speed * Statistics::GetDeltaTime();
+    float velocity = Speed * Stats::GetDeltaTime();
     if (direction == FORWARD)  _targetPosition += Front   * velocity;
     if (direction == BACKWARD) _targetPosition -= Front   * velocity;
     if (direction == RIGHT)    _targetPosition += Right   * velocity;
@@ -110,7 +110,7 @@ void Camera::Update()
         if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
         if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
 
-        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Statistics::GetDeltaTime());
+        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Stats::GetDeltaTime());
     }
 }
 

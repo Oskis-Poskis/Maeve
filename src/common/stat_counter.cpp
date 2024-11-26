@@ -13,7 +13,7 @@
 #include "../ui/text_renderer.h"
 #include "../common/qk.h"
 
-namespace Statistics
+namespace Stats
 {
     float _fps = 0.0f;
     float _ms  = 0.0f;
@@ -41,14 +41,14 @@ namespace Statistics
     float alpha  = 0.95f;
     void DrawStats()
     {
-        std::string memory = std::format("VRAM: {} / {}mb", Statistics::GetVramUsageMb(), Statistics::GetVRAMTotalMb());
-        timer += Statistics::GetDeltaTime();
+        std::string memory = std::format("VRAM: {} / {}mb", Stats::GetVramUsageMb(), Stats::GetVRAMTotalMb());
+        timer += Stats::GetDeltaTime();
         if (timer >= (1 / (60.0f)))
         {
             timer = 0.0f;
             
-            avgfps = alpha * avgfps + (1.0f - alpha) * Statistics::GetFPS();
-            avgms  = alpha * avgms + (1.0f - alpha) * Statistics::GetMS();
+            avgfps = alpha * avgfps + (1.0f - alpha) * Stats::GetFPS();
+            avgms  = alpha * avgms + (1.0f - alpha) * Stats::GetMS();
 
             FPS = std::format("{:<4} {:>7.2f}", "FPS:", avgfps);
             ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
@@ -59,11 +59,11 @@ namespace Statistics
         
         glDisable(GL_DEPTH_TEST);
         float lineSpacing = 20 * Text::GetGlobalTextScaling();
-        Text::Render(Statistics::Renderer,                                     15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
+        Text::Render(Stats::Renderer,                                     15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
         Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()), 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
         Text::Render(FPS,                                                      15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
         Text::Render(ms,                                                       15, Engine::GetWindowSize().y - yOffset - 4 * lineSpacing, textScaling);
-        Text::Render(memory,                                                   15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
+        if (Vendor == "NVIDIA Corporation") Text::Render(memory,               15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
         Text::Render(meshes,                                                   15, Engine::GetWindowSize().y - yOffset - 7 * lineSpacing, textScaling);
         Text::Render(objects,                                                  15, Engine::GetWindowSize().y - yOffset - 8 * lineSpacing, textScaling);
         glEnable(GL_DEPTH_TEST);

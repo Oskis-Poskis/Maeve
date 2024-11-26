@@ -48,7 +48,7 @@ namespace Input
             _lastX = _mouseX;
             _lastY = _mouseY;
         }
-        timer += Statistics::GetDeltaTime();
+        timer += Stats::GetDeltaTime();
     }
 
     void SetInputContext(InputContext Context)
