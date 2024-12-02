@@ -1,9 +1,9 @@
-CXX = g++
-CC  = gcc
+SRC_C   = lib/glad/glad.c
+SRC_CPP = $(shell find src -type f -name '*.cpp')
 
-SRC = $(shell find src -type f -name '*.cpp') lib/glad/glad.c
-OBJ  := $(SRC:.cpp=.o)
-OBJ  := $(OBJ:c.=.o)
+OBJDIR = .obj
+OBJ_C = $(addprefix $(OBJDIR)/, $(SRC_C:.c=.o))
+OBJ_CPP = $(addprefix $(OBJDIR)/, $(SRC_CPP:.cpp=.o))
 
 TARGET = maeve
 
@@ -22,9 +22,18 @@ debug: $(TARGET)
 release: CXXFLAGS = $(RELEASE_FLAGS)
 release: $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)
+$(TARGET): $(OBJ_C) $(OBJ_CPP)
+	g++ $^ -o $@ $(LDFLAGS)
+
+$(OBJDIR)/%.o: %.c | create-dirs
+	gcc $(CXXFLAGS) -c $< -o $@
+
+$(OBJDIR)/%.o: %.cpp | create-dirs
+	g++ $(CXXFLAGS) -c $< -o $@
+
+create-dirs:
+	@mkdir -p $(dir $(OBJ_C) $(dir $(OBJ_CPP)))
 
 clean:
-	@find . -name "*.o" -exec rm -f {} \;
-	@rm -f $(TARGET)
+	@find $(OBJDIR) -name "*.o" -exec rm -f {} \;
+	@rm -rf $(OBJDIR) $(TARGET)
