@@ -8,6 +8,10 @@
 # other
 .VSCodeCounter
 
+# make
+*.o
+maeve
+
 # cmake
 CMakeLists.txt.user
 CMakeCache.txt

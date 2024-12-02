@@ -111,6 +111,7 @@ void Camera::Update()
         if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
 
         Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Stats::GetDeltaTime());
+        // Position = _targetPosition;
     }
 }
 

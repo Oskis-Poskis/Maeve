@@ -22,7 +22,7 @@ namespace Text
     std::unique_ptr<Shader> textShader;
     unsigned int _textVAO, _textVBO;
 
-    float globalTextScale = 1.0f;
+    float globalTextScale = 1.2f;
 
     struct Character
     {
@@ -228,5 +228,6 @@ namespace Text
     {
         textShader->Use();
         textShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
+        printf("text resized\n");
     }
 }

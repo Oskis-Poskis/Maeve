@@ -41,20 +41,9 @@ namespace Engine
         windowWidth  = width;
         windowHeight = height;
         
-        for (const auto& callback : resizeCallbacks)
-        {
-            callback(width, height);
-        }
+        for (const auto& callback : resizeCallbacks) { callback(windowWidth, windowHeight); }
 
-        glClear(GL_COLOR_BUFFER_BIT);
-        glDisable(GL_BLEND);
-
-        Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GNormal));
-        Deferred::VisualizeGBuffers();
-        UI::Render();
-        Stats::DrawStats();
-
-        glfwSwapBuffers(window);
+        NewFrame();
     }
 
     void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
@@ -118,22 +107,18 @@ namespace Engine
 
         Stats::Initialize();
         Input::Initialize();
-        Text::Initialize();
-        UI::Initialize();
         AssetManager::Initialize();
         Manipulation::Initialize();
-        Deferred::CreateFBO(windowWidth, windowHeight);
+        Text::Initialize();
+        UI::Initialize();
+        Deferred::CreateFBO();
 
         windowResized(window, windowWidth, windowHeight);
     }
 
     void Run()
     {
-        while (!glfwWindowShouldClose(window))
-        {
-            NewFrame();
-        }
-
+        while (!glfwWindowShouldClose(window)) { NewFrame(); }
         Quit();
     }
 
@@ -145,12 +130,14 @@ namespace Engine
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distrib(0, 0);
 
-    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     void NewFrame()
     {
         glfwPollEvents();
         Input::Update();
         for (const auto& func : editorFunctions) { func(); }
+
+        AssetManager::ViewMat4 = AssetManager::EditorCam.GetViewMatrix();
         
         if (Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
@@ -171,17 +158,12 @@ namespace Engine
 
         // GBuffers
         glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetFBO());
+        glDrawBuffers(3, buffers);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glDrawBuffers(2, buffers);
-
-        //SceneManager::Objects[1].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 100 * Statistics::GetDeltaTime(), 0));
-        for (int i = 1; i < SceneManager::Objects.size(); i++)
-        {
-            SceneManager::Objects[i].SetRotation(SceneManager::Objects[1].GetRotation() + glm::vec3(0, 30 * Stats::GetDeltaTime(), 0));
-        }
 
         SceneManager::RenderAll();
-        AssetManager::ViewMat4 = AssetManager::EditorCam.GetViewMatrix();
+        glDrawBuffers(1, buffers);
+        Deferred::CalculatePBR();
 
         // Display
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -189,10 +171,8 @@ namespace Engine
         glClear(GL_COLOR_BUFFER_BIT);
 
         glEnable(GL_BLEND);
-        Deferred::CalculatePBR(AssetManager::EditorCam.Position);
         Deferred::VisualizeGBuffers();
         UI::Render();
-        
         Stats::Count(glfwGetTime());
         Stats::DrawStats();
         glDisable(GL_BLEND);

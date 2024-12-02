@@ -15,7 +15,7 @@ int main()
     // AssetManager::IO::LoadObj("res/objs/teapot.obj",         "loadedmodel6");
     // AssetManager::IO::LoadObj("res/objs/xyzrgb_dragon.obj",  "loadedmodel7");
     // AssetManager::IO::LoadObj("res/objs/armadillo_high.obj", "loadedmodel8");
-    // AssetManager::IO::LoadObj("../res/objs/wrona.ob",           "failedmodel");
+    // AssetManager::IO::LoadObj("../res/objs/wrona.ob",        "failedmodel");
     
     SceneManager::Object plane("Plane", "plane");
     plane.SetScale(glm::vec3(10.0f));
