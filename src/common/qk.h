@@ -15,6 +15,11 @@ namespace qk
     std::string FormatVec(glm::ivec3 vec);
     std::string FormatVec(glm::ivec2 vec);
 
+    int RandomInt(int min, int max);
+
     glm::ivec2 PixelToNDC();
     glm::ivec2 NDCToPixel(float x, float y);
+
+    void DrawDebugCube(glm::vec3 pos, glm::vec3 scale, glm::vec3 color = glm::vec3(1.0f));
+    void DrawScreenAlignedPlane(glm::vec3 pos, glm::vec3 scale, glm::vec3 color = glm::vec3(1.0f));
 }

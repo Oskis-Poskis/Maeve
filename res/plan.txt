@@ -12,8 +12,14 @@
 
 // Rendering
 ⦁ Light objects
+Point:
+    vec3  Position
+    float Radius
+    vec3  Color
+    float Intensity
+
 ⦁ Shader hot reloading (✅ ish)
-⦁ SSAO
+⦁ SSAO, first blur using white noise, then two pass box/gaussian blur
 ⦁ Texture loading
 ⦁ Shadow Mapping (Variance?)
 ⦁ OBJ loading (no indices) ✅

@@ -6,6 +6,11 @@
 #include "render_engine.h"
 #include "asset_manager.h"
 #include "../common/camera.h"
+#include "../common/qk.h"
+
+#include <iostream>
+#include <chrono>
+using namespace std::chrono;
 
 namespace SceneManager
 {
@@ -16,17 +21,25 @@ namespace SceneManager
         CalculateObjectsTriCount();
     }
 
+    void AddLight(Light Light)
+    {
+        Lights.push_back(Light);
+    }
+
     void RenderAll()
     {
         AssetManager::S_GBuffers->Use();
         AssetManager::S_GBuffers->SetMatrix4("projection", AssetManager::ProjMat4);
         AssetManager::S_GBuffers->SetMatrix4("view", AssetManager::ViewMat4);
 
+        // auto start = high_resolution_clock::now();
+
         for (auto const& mesh : AssetManager::Meshes)
         {
             int numElements = mesh.second.TriangleCount * 3;
             glBindVertexArray(mesh.second.VAO);
 
+            // todo -> unordered map with key as material names, value is list of objects with that material
             for (auto &obj : SceneManager::Objects)
             {
                 if (obj.GetMeshID() == mesh.first)
@@ -37,6 +50,19 @@ namespace SceneManager
                 }
             }
         }
+        
+        // auto stop = high_resolution_clock::now();
+        // auto duration = duration_cast<microseconds>(stop - start).count();
+
+        // std::cout << "Loop: " << (double)duration / 1000000.0 << "\n";
+    }
+
+    void DrawEditorGeometry()
+    {
+        for (auto &light : SceneManager::Lights)
+        {
+            qk::DrawScreenAlignedPlane(light.GetPosition(), glm::vec3(0.15f), light.GetColor());
+        }
     }
 
     Object::Object(std::string Name, std::string MeshID)
@@ -45,31 +71,31 @@ namespace SceneManager
         _position    = glm::vec3(0.0f);
         _rotation    = glm::vec3(0.0f);
         _scale       = glm::vec3(1.0f);
-        _modelMatrix = glm::mat4(1.0);
-        _meshID = MeshID;
+        _modelMatrix = glm::mat4(1.0f);
+        _meshID      = MeshID;
 
-        ReconstructMat4();
+        RecalculateMat4();
     }
 
     void Object::SetPosition(glm::vec3 Position)
     {
         _position = Position;
-        ReconstructMat4();
+        RecalculateMat4();
     }
 
     void Object::SetRotation(glm::vec3 Rotation)
     {
         _rotation = Rotation;
-        ReconstructMat4();
+        RecalculateMat4();
     }
 
     void Object::SetScale(glm::vec3 Scale)
     {
         _scale = Scale;
-        ReconstructMat4();
+        RecalculateMat4();
     }
 
-    void Object::ReconstructMat4()
+    void Object::RecalculateMat4()
     {
         glm::mat4 identity(1.0f);
 
@@ -128,14 +154,60 @@ namespace SceneManager
         ObjectsTriCount = numtris;   
     }
 
-    std::vector<std::string> ObjetNames()
+    Light::Light(std::string Name, LightType Type)
     {
-        std::vector<std::string> names;
-        for (Object &obj : Objects)
-        {
-            std::string name = obj.GetName();
-            names.push_back(name);
-        }
-        return names;
+        _name  = Name;
+        _type  = Type;
+
+        _position  = glm::vec3(0.0f);
+        _radius    = 10.0f;
+        _color     = glm::vec3(1.0, 0.0, 0.0);
+        _intensity = 5.0f;
+    }
+
+    Light::Light(std::string Name, LightType Type, glm::vec3 Position, float Radius, glm::vec3 Color, float Intensity)
+    {
+        _name  = Name;
+        _type  = Type;
+
+        _position  = Position;
+        _radius    = Radius;
+        _color     = Color;
+        _intensity = Intensity;
+    }
+
+    void Light::SetPosition(glm::vec3 Position)
+    {
+        _position = Position;
+    }
+
+    void Light::SetColor(glm::vec3 Color)
+    {
+        _color = Color;
+    }
+
+    void Light::SetIntensity(float Intensity)
+    {
+        _intensity = Intensity;
+    }
+
+    void Light::SetRadius(float Radius)
+    {
+        _radius = Radius;
+    }
+
+    glm::vec3 Light::GetPosition()
+    {
+        return _position;
+    }
+    
+    glm::vec3 Light::GetColor()
+    {
+        return _color;
+    }
+
+    float Light::GetIntensity()
+    {
+        return _intensity;
     }
 }

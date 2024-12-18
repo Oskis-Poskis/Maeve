@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <format>
 
 #include <glm/glm.hpp>
 #include <glad/glad.h>
@@ -8,6 +9,7 @@
 #include "deffered_manager.h"
 #include "../render_engine.h"
 #include "../asset_manager.h"
+#include "../scene_manager.h"
 #include "../../common/shader.h"
 #include "../../common/qk.h"
 #include "../../ui/text_renderer.h"
@@ -15,17 +17,15 @@
 namespace Deferred
 {
     void Resize(int width, int height);
-    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture);
 
     unsigned int deferredFBO;
     unsigned int defferedQuadVAO;
-    std::unique_ptr<Shader> fullscreenShader;
+    std::unique_ptr<Shader> S_fullscreenQuad;
 
     unsigned int screenQuadVAO, screenQuadVBO;
-    std::unique_ptr<Shader> screenQuadShader;
+    std::unique_ptr<Shader> S_quad;
 
     unsigned int GBuffers[4];
-    std::unique_ptr<Shader> pbr;
 
     void CreateFBO()
     {
@@ -35,9 +35,9 @@ namespace Deferred
         glBindFramebuffer(GL_FRAMEBUFFER, deferredFBO);
 
         // Combined
-        glGenTextures(1, &GBuffers[GCombined]);
-        glBindTexture(GL_TEXTURE_2D, GBuffers[GCombined]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GBuffers[GCombined], 0);
+        glGenTextures(1, &GBuffers[GShaded]);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, GBuffers[GShaded], 0);
 
         // Albedo
         glGenTextures(1, &GBuffers[GAlbedo]);
@@ -57,9 +57,9 @@ namespace Deferred
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) std::cout << "Deffered Frambuffer successfully initialized\n\n";
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        pbr              = std::make_unique<Shader>("/res/shaders/deferred/shading");
-        fullscreenShader = std::make_unique<Shader>("/res/shaders/deferred/fullscreen");
-        screenQuadShader = std::make_unique<Shader>("/res/shaders/deferred/screenquad");
+        s_shading = std::make_unique<Shader>("/res/shaders/deferred/shading");
+        S_quad = std::make_unique<Shader>("/res/shaders/deferred/texture");
+        S_fullscreenQuad = std::make_unique<Shader>("/res/shaders/deferred/texture_fullscreen");
 
         glGenVertexArrays(1, &defferedQuadVAO);
         glGenVertexArrays(1, &screenQuadVAO);
@@ -78,7 +78,7 @@ namespace Deferred
 
     void Resize(int width, int height)
     {
-        glBindTexture(GL_TEXTURE_2D, GBuffers[GCombined]);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0,  GL_RGB, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -111,7 +111,7 @@ namespace Deferred
 
     void DrawFullscreenQuad(unsigned int texture)
     {
-        fullscreenShader->Use();
+        S_fullscreenQuad->Use();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -122,9 +122,10 @@ namespace Deferred
         glEnable(GL_DEPTH_TEST);
     }
 
-    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture)
+    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel)
     {
-        screenQuadShader->Use();
+        S_quad->Use();
+        S_quad->SetInt("isDepth", singleChannel);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -143,32 +144,41 @@ namespace Deferred
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
-    void CalculatePBR()
+    void DoShading()
     {
-        glDepthMask(false);
-        pbr->Use();
-        pbr->SetVector3("cDir", AssetManager::EditorCam.Front);
-        pbr->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
-        pbr->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
+        glDepthMask(false); 
+        s_shading->Use();
+        s_shading->SetVector3("cDir", AssetManager::EditorCam.Front);
+        s_shading->SetVector3("cPos", AssetManager::EditorCam.Position);
+        s_shading->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
+        s_shading->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
+
+        s_shading->SetInt("NumPointLights", SceneManager::Lights.size());
+        for (int i = 0; i < SceneManager::Lights.size(); i++)
+        {
+            s_shading->SetVector3(std::format("PointLights[{}].", i) + "position", SceneManager::Lights[i].GetPosition());
+            s_shading->SetVector3(std::format("PointLights[{}].", i) + "color",    SceneManager::Lights[i].GetColor());
+            s_shading->SetFloat(std::format("PointLights[{}].", i) + "intensity",  SceneManager::Lights[i].GetIntensity());
+        }
         
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GAlbedo]);
-        pbr->SetInt("GAlbedo", GAlbedo);
+        s_shading->SetInt("GAlbedo", GAlbedo);
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);
-        pbr->SetInt("GNormal", GNormal);
+        s_shading->SetInt("GNormal", GNormal);
 
         glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDepthStencil]);
-        pbr->SetInt("GDepth", GDepthStencil);
+        s_shading->SetInt("GDepth", GDepthStencil);
         
         glBindVertexArray(defferedQuadVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         glDepthMask(true);
     }
 
-    float length = 0.4;
+    float length = 0.35;
     float textScale = 0.5f;
     void VisualizeGBuffers()
     {
@@ -182,13 +192,13 @@ namespace Deferred
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f);
         Text::RenderCentered("GNormal", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
-        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepthStencil));
+        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepthStencil), true);
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length);
         Text::RenderCentered("GDepthStencil", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
-        DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length * 2), glm::vec2(1.0f - length, 1.0f - length), Deferred::GetTexture(Deferred::GCombined));
+        DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length * 2), glm::vec2(1.0f - length, 1.0f - length), Deferred::GetTexture(Deferred::GShaded));
         pos = qk::NDCToPixel(1.0f - length * 1.5f, 1.0f - length);
-        Text::RenderCentered("GCombined", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        Text::RenderCentered("GShaded", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         glEnable(GL_DEPTH_TEST);
     }

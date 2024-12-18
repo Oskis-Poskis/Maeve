@@ -73,6 +73,7 @@ namespace UI
          Menu sceneManager;
          Menu assetManager;
               Menu meshes;
+              Menu lights;
               Menu materials;
               Menu textures;
          Menu statistics;
@@ -90,7 +91,7 @@ namespace UI
     {
         glDisable(GL_DEPTH_TEST);
 
-        if (Input::KeyPressed(GLFW_KEY_TAB))
+        if (Input::KeyPressed(GLFW_KEY_TAB)) 
         {
             if (inMenu)
             {
@@ -99,6 +100,40 @@ namespace UI
             }
             else
             {
+                inMenu = true;
+                Input::SetInputContext(Input::Menu);
+            }
+        }
+        if (Input::KeyDown(GLFW_KEY_ESCAPE)) inMenu = false;
+
+        if (Input::KeyDown(GLFW_KEY_LEFT_SHIFT))
+        {
+            // Scene manager
+            if (Input::KeyPressed(GLFW_KEY_SPACE))
+            {
+                activemenu = &mainMenu.SubMenus[0];
+                mainMenu.SelectedSubMenu = 0;
+
+                inMenu = true;
+                Input::SetInputContext(Input::Menu);
+            }
+            if (Input::KeyPressed(GLFW_KEY_A))
+            {
+                activemenu = &meshes;
+                assetManager.SelectedSubMenu = 0;
+
+                inMenu = true;
+                Input::SetInputContext(Input::Menu);
+            }
+        }
+        // Asset manager
+        if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL))
+        {
+            if (Input::KeyPressed(GLFW_KEY_SPACE))
+            {
+                activemenu = &mainMenu.SubMenus[1];
+                mainMenu.SelectedSubMenu = 1;
+
                 inMenu = true;
                 Input::SetInputContext(Input::Menu);
             }
@@ -117,10 +152,10 @@ namespace UI
             RecalcMenuWidths(*toplevelmenu);
         }
 
-        right_edge   = centerX + mainMenu.MenuWidth / 2;
-        left_edge    = centerX - mainMenu.MenuWidth / 2;
-        top_edge     = centerY + MenuStartY;
-        bottom_edge  = centerY - MenuStartY;
+        right_edge  = centerX + mainMenu.MenuWidth / 2;
+        left_edge   = centerX - mainMenu.MenuWidth / 2;
+        top_edge    = centerY + MenuStartY;
+        bottom_edge = centerY - MenuStartY;
 
         if (inMenu)
         {   
@@ -146,6 +181,7 @@ namespace UI
         blend = glm::smoothstep(0.0f, 1.0f, elapsed);
         xoffset = glm::mix(0, mainMenu.MenuWidth + OutlineWidth, blend);
 
+        Text::Render("Address: " + std::to_string(reinterpret_cast<uintptr_t>(this)), 25, 85, TitleBarTextScaling);
         Text::Render("Active menu: " + activemenu->Title, 25, 65, TitleBarTextScaling);
         if (parent) Text::Render("Parent: " + parent->Title, 25, 45, TitleBarTextScaling);
         Text::Render("Selected item: " + std::to_string(SelectedSubMenu), 25, 25, TitleBarTextScaling);
@@ -171,6 +207,18 @@ namespace UI
     float x_timer = 0.0f;
     void Menu::Input(int NumSubMenus)
     {
+        if (ExtraInput) ExtraInput();
+
+        if (Input::KeyPressed(GLFW_KEY_HOME))
+        {
+            SelectedSubMenu = 0;
+        }
+        if (Input::KeyPressed(GLFW_KEY_END))
+        {
+            if (SubMenus.size() > 0) SelectedSubMenu = SubMenus.size() - 1;
+            else if (Items) SelectedSubMenu = Items->size() - 1;
+        }
+
         int mult = (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) ? stepMultiplier : 1;
 
         x_timer += Stats::GetDeltaTime();
@@ -185,9 +233,8 @@ namespace UI
             }
             if ((Input::KeyDown(GLFW_KEY_LEFT) || Input::KeyPressed(GLFW_KEY_LEFT)) && !IsTopLevel)
             {
-                if (SubMenus.size() > 0 || (Items && SelectedSubMenu < MaxItemsUntilWrap))
+                if ((!Items) || (Items && SelectedSubMenu < MaxItemsUntilWrap))
                 {
-                    FadingAway = true;
                     activemenu = parent;
                 }
                 else if (Items && SelectedSubMenu >= MaxItemsUntilWrap) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size(), true);
@@ -241,16 +288,6 @@ namespace UI
         ThemeColor = ThemeCol;
         MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
         Items = nullptr;
-    }
-
-    void RecalcMenuWidths(Menu &targetmenu)
-    {
-        targetmenu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
-        for (auto &menu : targetmenu.SubMenus)
-        {
-            menu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
-            RecalcMenuWidths(menu);
-        }
     }
 
     void Menu::AddSubMenu(Menu &menu)
@@ -380,6 +417,25 @@ namespace UI
         glDrawArrays(GL_TRIANGLE_FAN, 0, 3);
     }
 
+    void RecalcMenuWidths(Menu &targetmenu)
+    {
+        targetmenu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
+        for (auto &menu : targetmenu.SubMenus)
+        {
+            menu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
+            RecalcMenuWidths(menu);
+        }
+    }
+
+    void MeshesInput()
+    {
+        if (Input::KeyPressed(GLFW_KEY_ENTER))
+        {
+            std::string name = AssetManager::MeshNames[activemenu->SelectedSubMenu];
+            SceneManager::AddObject(SceneManager::Object(name, name));
+        }
+    }
+
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
@@ -405,26 +461,33 @@ namespace UI
 
         mainMenu.Initialize("hotbox", MainMenuColor);
         mainMenu.IsTopLevel = true;
-
         mainMenu.BGopacity = 0.0f;
         mainMenu.HasHeaderBar = false;
+        {
+            sceneManager.Initialize("Scene Manager", SecondaryColor, &SceneManager::ObjectNames);
+            sceneManager.CenteredList = true;
 
-        sceneManager.Initialize("Scene Manager", SecondaryColor, &SceneManager::ObjectNames);
-        sceneManager.CenteredList = true;
+            assetManager.Initialize("Asset Manager", TertieryColor);
+            {
+                meshes.Initialize("Meshes", SecondaryColor, &AssetManager::MeshNames);
+                meshes.MaxItemsUntilWrap = 4;
+                meshes.ExtraInput = MeshesInput;
 
-        assetManager.Initialize("Asset Manager", TertieryColor);
-        meshes.Initialize("Meshes", SecondaryColor, &AssetManager::MeshNames);
-        meshes.MaxItemsUntilWrap = 4;
-        materials.Initialize("Materials", SecondaryColor);
-        textures.Initialize("Textures", SecondaryColor);
+                lights.Initialize("Lights", SecondaryColor);
 
-        assetManager.AddSubMenu(meshes);
-        assetManager.AddSubMenu(materials);
-        assetManager.AddSubMenu(textures);
+                materials.Initialize("Materials", SecondaryColor);
 
-        statistics.Initialize("Statistics", SecondaryColor);
-        engine.Initialize("Engine",         SecondaryColor);
-        qk.Initialize("Qk",                 SecondaryColor);
+                textures.Initialize("Textures", SecondaryColor);
+            }
+            assetManager.AddSubMenu(meshes);
+            assetManager.AddSubMenu(lights);
+            assetManager.AddSubMenu(materials);
+            assetManager.AddSubMenu(textures);
+            
+            statistics.Initialize("Statistics", SecondaryColor);
+            engine.Initialize("Engine",         SecondaryColor);
+            qk.Initialize("Qk",                 SecondaryColor);
+        }
         
         mainMenu.AddSubMenu(sceneManager);
         mainMenu.AddSubMenu(assetManager);

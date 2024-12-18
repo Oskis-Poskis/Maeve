@@ -24,12 +24,12 @@ namespace AssetManager
 
         AddMeshByData(AssetManager::Presets::PlaneVtxData, AssetManager::Presets::PlaneIndices, "plane");
         AddMeshByData(AssetManager::Presets::CubeVtxData, AssetManager::Presets::CubeIndices, "cube");
+        AddMeshByData(std::vector<VtxData> {}, "empty");
         
-        S_GBuffers = std::make_unique<Shader>("/res/shaders/deferred/gbuffers");
-        S_SingleColor = std::make_unique<Shader>("/res/shaders/singlecolor");
-        S_Lambert  = std::make_unique<Shader>("/res/shaders/lambert");
+        S_GBuffers = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
+        S_SingleColor = std::make_unique<Shader>("/res/shaders/debug/singlecolor");
 
-        EditorCam = Camera(glm::vec3(0.0f, 3.0f, 3.0f), 70, -90.0f, 0.0f);
+        EditorCam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), 70, -90.0f, 0.0f);
     }
 
     Mesh::Mesh(std::vector<VtxData> VertexData, std::vector<unsigned int> Indices)
@@ -94,11 +94,6 @@ namespace AssetManager
     {   
         Meshes.insert( {Name, Mesh(VertexData, Indices)} );
         MeshNames.push_back(Name);
-    }
-    
-    void UpdateMatrices()
-    {
-        Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
     }
 
     void Resize(int width, int height)

@@ -37,7 +37,6 @@ namespace AssetManager
     void Initialize();
     void AddMeshByData(std::vector<VtxData> VertexData, std::string Name);
     void AddMeshByData(std::vector<VtxData> VertexData, std::vector<unsigned int> Faces, std::string Name);
-    void UpdateMatrices();
     
     inline std::unordered_map<std::string, Mesh> Meshes;
     inline std::vector<std::string> MeshNames;

@@ -103,12 +103,15 @@ void Camera::Update()
             firstClick = true;
         }
 
-        if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
-        if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
-        if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
-        if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
-        if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
-        if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
+        if (!Input::KeyDown(GLFW_KEY_LEFT_SHIFT))
+        {
+            if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
+            if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
+            if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
+            if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
+            if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
+            if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
+        }
 
         Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Stats::GetDeltaTime());
         // Position = _targetPosition;

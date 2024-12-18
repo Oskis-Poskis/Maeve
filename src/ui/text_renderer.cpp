@@ -228,6 +228,5 @@ namespace Text
     {
         textShader->Use();
         textShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
-        printf("text resized\n");
     }
 }

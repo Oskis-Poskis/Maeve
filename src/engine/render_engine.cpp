@@ -29,7 +29,7 @@ namespace Engine
     int unfullscreenwindowPosY   = 0;
 
     std::vector<std::function<void(int, int)>> resizeCallbacks;
-    std::vector<std::function<void()>> editorFunctions;
+    std::vector<std::function<void()>> editorEvents;
 
     void errorCallback(int error, const char* description);
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -47,7 +47,7 @@ namespace Engine
     }
 
     void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
-    void RegisterEditorFunction(const std::function<void()>& func) { editorFunctions.push_back(func); }
+    void RegisterEditorFunction(const std::function<void()>& func) { editorEvents.push_back(func); }
 
     void windowMaximized(GLFWwindow* window, int maximized)
     {
@@ -122,39 +122,18 @@ namespace Engine
         Quit();
     }
 
-    int it = 0;
-    int num = 10;
-    int spacing = 3;
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distrib(0, 0);
-
     const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
     void NewFrame()
     {
         glfwPollEvents();
         Input::Update();
-        for (const auto& func : editorFunctions) { func(); }
+        for (const auto& func : editorEvents) { func(); }
 
         AssetManager::ViewMat4 = AssetManager::EditorCam.GetViewMatrix();
         
-        if (Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
+        if (Input::KeyDown(GLFW_KEY_SPACE) && Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
-        if (Input::KeyDown(GLFW_KEY_P) && it < (num * num * num))
-        {
-            int xdir = it % num;
-            int ydir = (it / num) % num;
-            int zdir = it /(num * num);
-
-            std::string mesh = "loadedmodel" + std::to_string(distrib(gen));
-
-            SceneManager::Object itobj(mesh + std::to_string(it), mesh);
-            itobj.SetPosition(glm::vec3(xdir * spacing - ((num - 1) * spacing) / 2.0f, ydir * spacing + spacing, zdir * spacing - ((num - 1) * spacing) / 2.0f));
-            SceneManager::AddObject(itobj);
-
-            it++;
-        }
+        if (Input::KeyPressed(GLFW_KEY_R)) Deferred::s_shading->Reload();
 
         // GBuffers
         glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetFBO());
@@ -162,15 +141,16 @@ namespace Engine
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         SceneManager::RenderAll();
-        glDrawBuffers(1, buffers);
-        Deferred::CalculatePBR();
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        Deferred::DoShading();
+        SceneManager::DrawEditorGeometry();
 
         // Display
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glDrawBuffer(GL_COLOR_ATTACHMENT0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glEnable(GL_BLEND);
+        Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GShaded));
         Deferred::VisualizeGBuffers();
         UI::Render();
         Stats::Count(glfwGetTime());
@@ -205,9 +185,5 @@ namespace Engine
     glm::ivec2  GetMonitorSize()   { return glm::ivec2(monitorWidth, monitorHeight); }
     
     void errorCallback(int error, const char* description) { fprintf(stderr, "Error: %s\n", description); }
-    void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-    {
-        AssetManager::EditorCam.Speed = glm::clamp(AssetManager::EditorCam.Speed + (float)yoffset, 5.0f, 30.0f);
-        std::cout << AssetManager::EditorCam.Speed << "\n";
-    }
+    void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) { }
 }
