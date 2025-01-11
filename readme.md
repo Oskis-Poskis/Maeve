@@ -6,5 +6,6 @@ Custom game engine hobby project
 ![](Doc/DeferredShading.png)
 * Text rendering and custom UI interface
 ![](Doc/UI-Menu.png)
+![](Doc/Scene-manager.png)
 * Viewport transformations (WIP)
 ![](Doc/Viewport.png)
