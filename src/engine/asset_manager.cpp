@@ -27,7 +27,7 @@ namespace AssetManager
         AddMeshByData(std::vector<VtxData> {}, "empty");
         
         S_GBuffers = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
-        S_SingleColor = std::make_unique<Shader>("/res/shaders/debug/singlecolor");
+        S_SingleColor = std::make_unique<Shader>("/res/shaders/common/singlecolor");
 
         EditorCam = Camera(glm::vec3(0.0f, 0.0f, 3.0f), 70, -90.0f, 0.0f);
     }

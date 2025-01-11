@@ -66,7 +66,7 @@ namespace UI
     int itemHeightPX;
     int centerX, centerY;
     int right_edge, left_edge; 
-    int top_edge, bottom_edge;
+    int top_edge;
     int titleHeight;
 
     Menu mainMenu;
@@ -155,7 +155,6 @@ namespace UI
         right_edge  = centerX + mainMenu.MenuWidth / 2;
         left_edge   = centerX - mainMenu.MenuWidth / 2;
         top_edge    = centerY + MenuStartY;
-        bottom_edge = centerY - MenuStartY;
 
         if (inMenu)
         {   
@@ -249,12 +248,14 @@ namespace UI
             if (Input::KeyDown(GLFW_KEY_UP))
             {
                 if (SubMenus.size() > 0) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
-                else if (Items && ((SelectedSubMenu) % MaxItemsUntilWrap) != 0) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
+                else if (Items) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
+                // && ((SelectedSubMenu) % MaxItemsUntilWrap) != 0
             }
             if (Input::KeyDown(GLFW_KEY_DOWN))
             {
                 if (SubMenus.size() > 0) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
-                else if (Items && ((SelectedSubMenu + 1) % MaxItemsUntilWrap) != 0) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
+                else if (Items) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
+                // Items && ((SelectedSubMenu + 1) % MaxItemsUntilWrap) != 0
             }
         }
     }
@@ -321,15 +322,35 @@ namespace UI
                      glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * items.size() - OutlineWidth + yoffset), OutlineColor, submenu.BGopacity); */
 
             // Header
-            if (submenu.HasHeaderBar)
+            if (submenu.HiearchyView)
             {
-                DrawRect(glm::vec2(left_edge, top_edge + yoffset),
-                                    submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
+                if (submenu.HasHeaderBar)
+                {
+                    DrawRect(glm::vec2(left_edge, top_edge + glm::min(6 * itemHeightPX, yoffset)),
+                             submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
+                }
+            }
+            else
+            {
+                if (submenu.HasHeaderBar)
+                {
+                    DrawRect(glm::vec2(left_edge, top_edge + yoffset),
+                            submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
+                }
             }
         }
+        
         // Title
-        Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
-                     top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
+        if (submenu.HiearchyView)
+        {
+            Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
+                         top_edge - titleHeight + TitleBarPaddingYPX + glm::min(6 * itemHeightPX, yoffset), TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
+        }
+        else
+        {
+            Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
+                        top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
+        }
 
         for (int i = 0; i < items.size(); i++)
         {
@@ -349,12 +370,35 @@ namespace UI
                     }
                 }
                 
-                DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
-                                   submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
+                if (submenu.HiearchyView)
+                {
+                    if (i < submenu.SelectedSubMenu + 7 && i > submenu.SelectedSubMenu - 7)
+                    {
+                        DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
+                                submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
+                    }
+                }
+                else
+                {
+                    DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
+                             submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
+                }
             }
             glm::vec3 col = (i == submenu.SelectedSubMenu) ? ItemTextActive : ItemTextInactive;
-            Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
-                         top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+
+            if (submenu.HiearchyView)
+            {
+                if (i < submenu.SelectedSubMenu + 7 && i > submenu.SelectedSubMenu - 7)
+                {
+                    Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
+                                 top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+                }
+            }
+            else
+            {
+                Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
+                             top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+            }
         }
 
         int cursorxoffset = (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
@@ -436,6 +480,20 @@ namespace UI
         }
     }
 
+    void SceneManagerInput()
+    {
+        SceneManager::SelectObject(activemenu->SelectedSubMenu);
+        if (Input::KeyPressed(GLFW_KEY_ENTER))
+        {
+            activemenu->HiearchyView = !activemenu->HiearchyView;
+            if (activemenu->HiearchyView)
+            {
+                activemenu->MaxItemsUntilWrap = 10000;
+            }
+            else activemenu->MaxItemsUntilWrap = 24;
+        }
+    }
+
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
@@ -466,11 +524,11 @@ namespace UI
         {
             sceneManager.Initialize("Scene Manager", SecondaryColor, &SceneManager::ObjectNames);
             sceneManager.CenteredList = true;
+            sceneManager.ExtraInput = SceneManagerInput;
 
             assetManager.Initialize("Asset Manager", TertieryColor);
             {
                 meshes.Initialize("Meshes", SecondaryColor, &AssetManager::MeshNames);
-                meshes.MaxItemsUntilWrap = 4;
                 meshes.ExtraInput = MeshesInput;
 
                 lights.Initialize("Lights", SecondaryColor);

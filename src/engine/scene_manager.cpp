@@ -9,11 +9,16 @@
 #include "../common/qk.h"
 
 #include <iostream>
-#include <chrono>
-using namespace std::chrono;
 
 namespace SceneManager
 {
+    int _selectedObject;
+
+    void Initialize()
+    {
+        Engine::RegisterEditorDraw3DFunction(DrawLights);
+    }
+
     void AddObject(Object Object)
     {
         Objects.push_back(Object);
@@ -26,13 +31,21 @@ namespace SceneManager
         Lights.push_back(Light);
     }
 
+    void SelectObject(int Index)
+    {
+        _selectedObject = glm::min(Index, (int)Objects.size() - 1);
+    }
+
+    int GetSelectedIndex()
+    {
+        return _selectedObject;
+    }
+
     void RenderAll()
     {
         AssetManager::S_GBuffers->Use();
         AssetManager::S_GBuffers->SetMatrix4("projection", AssetManager::ProjMat4);
         AssetManager::S_GBuffers->SetMatrix4("view", AssetManager::ViewMat4);
-
-        // auto start = high_resolution_clock::now();
 
         for (auto const& mesh : AssetManager::Meshes)
         {
@@ -40,6 +53,7 @@ namespace SceneManager
             glBindVertexArray(mesh.second.VAO);
 
             // todo -> unordered map with key as material names, value is list of objects with that material
+            int index = 0;
             for (auto &obj : SceneManager::Objects)
             {
                 if (obj.GetMeshID() == mesh.first)
@@ -48,16 +62,12 @@ namespace SceneManager
                     if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
                     else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
                 }
+                index++;
             }
         }
-        
-        // auto stop = high_resolution_clock::now();
-        // auto duration = duration_cast<microseconds>(stop - start).count();
-
-        // std::cout << "Loop: " << (double)duration / 1000000.0 << "\n";
     }
 
-    void DrawEditorGeometry()
+    void DrawLights()
     {
         for (auto &light : SceneManager::Lights)
         {

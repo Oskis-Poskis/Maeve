@@ -73,12 +73,17 @@ namespace SceneManager
             LightType   _type;
     };
 
-    void DrawEditorGeometry();
+    void DrawLights();
     
     void RenderAll();
     void CalculateObjectsTriCount();
     void AddObject(Object Object);
     void AddLight(Light Light);
+
+    void Initialize();
+
+    void SelectObject(int Index);
+    int  GetSelectedIndex();
 
     inline std::vector<Light>  Lights;
     inline std::vector<Object> Objects;

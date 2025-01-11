@@ -30,6 +30,7 @@ namespace Engine
 
     std::vector<std::function<void(int, int)>> resizeCallbacks;
     std::vector<std::function<void()>> editorEvents;
+    std::vector<std::function<void()>> editorDraw3DEvent;
 
     void errorCallback(int error, const char* description);
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -42,12 +43,11 @@ namespace Engine
         windowHeight = height;
         
         for (const auto& callback : resizeCallbacks) { callback(windowWidth, windowHeight); }
-
-        NewFrame();
     }
 
     void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
     void RegisterEditorFunction(const std::function<void()>& func) { editorEvents.push_back(func); }
+    void RegisterEditorDraw3DFunction(const std::function<void()>& func) { editorDraw3DEvent.push_back(func); }
 
     void windowMaximized(GLFWwindow* window, int maximized)
     {
@@ -86,6 +86,8 @@ namespace Engine
             monitorWidth  = mode->width;
             monitorHeight = mode->height;
             glfwSetWindowPos(window, monitorWidth / 2 - windowWidth / 2, monitorHeight / 2 - windowHeight / 2);
+
+            ToggleFullscreen();
         }
         else std::cout << "[:] Couldn't initialize GLFW\n\n";
 
@@ -107,11 +109,12 @@ namespace Engine
 
         Stats::Initialize();
         Input::Initialize();
+        Deferred::Initialize();
+        SceneManager::Initialize();
         AssetManager::Initialize();
         Manipulation::Initialize();
         Text::Initialize();
         UI::Initialize();
-        Deferred::CreateFBO();
 
         windowResized(window, windowWidth, windowHeight);
     }
@@ -122,37 +125,39 @@ namespace Engine
         Quit();
     }
 
-    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     void NewFrame()
     {
         glfwPollEvents();
         Input::Update();
-        for (const auto& func : editorEvents) { func(); }
 
         AssetManager::ViewMat4 = AssetManager::EditorCam.GetViewMatrix();
         
         if (Input::KeyDown(GLFW_KEY_SPACE) && Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
-        if (Input::KeyPressed(GLFW_KEY_R)) Deferred::s_shading->Reload();
+        if (Input::KeyPressed(GLFW_KEY_R)) Deferred::S_postprocessQuad->Reload();
 
         // GBuffers
         glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetFBO());
-        glDrawBuffers(3, buffers);
+        glDrawBuffers(4, buffers);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         SceneManager::RenderAll();
+        /* EDITOR ONLY */ Deferred::DrawMask();
+
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         Deferred::DoShading();
-        SceneManager::DrawEditorGeometry();
+        /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvent) { func(); }
 
         // Display
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glEnable(GL_BLEND);
-        Deferred::DrawFullscreenQuad(Deferred::GetTexture(Deferred::GShaded));
-        Deferred::VisualizeGBuffers();
-        UI::Render();
+        Deferred::DrawPostProcessQuad();
+        /* EDITOR ONLY */ Deferred::VisualizeGBuffers();
+        /* EDITOR ONLY */ UI::Render();
+        /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
         Stats::Count(glfwGetTime());
         Stats::DrawStats();
         glDisable(GL_BLEND);

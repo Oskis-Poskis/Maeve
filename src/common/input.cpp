@@ -51,6 +51,15 @@ namespace Input
         timer += Stats::GetDeltaTime();
     }
 
+    std::string InputContextString()
+    {
+        switch (inputContext)
+        {
+            case Game:      return "Game";
+            case Menu:      return "Menu";
+        }
+    }
+
     void SetInputContext(InputContext Context)
     {
         previousInputContext = inputContext;

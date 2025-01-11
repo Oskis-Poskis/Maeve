@@ -71,7 +71,7 @@ double downposx, downposy;
 
 void Camera::Update()
 {
-    if (Input::GetInputContext() != Input::TextInput)
+    // if (Input::GetInputContext() != Input::TextInput)
     {
         if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
         {

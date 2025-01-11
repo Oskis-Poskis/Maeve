@@ -10,6 +10,8 @@ namespace qk
     std::string FmtK(float value);
     std::string CombinedPath(std::string PathOne, std::string PathTwo);
 
+    float MapRange(float Input, float InputMin, float InputMax, float OutputMin, float OutputMax);
+
     std::string FormatVec(glm::vec3 vec, int decimals = 3);
     std::string FormatVec(glm::vec2 vec, int decimals = 3);
     std::string FormatVec(glm::ivec3 vec);

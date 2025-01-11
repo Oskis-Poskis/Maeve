@@ -6,10 +6,9 @@ namespace Input
     {
         Game,
         Menu,
-        HotMenu,
-        TextInput,
-        AxisSelection
     };
+
+    std::string InputContextString();
 
     void SetInputContext(InputContext Context);
     InputContext GetInputContext();

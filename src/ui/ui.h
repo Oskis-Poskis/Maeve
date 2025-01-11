@@ -28,11 +28,12 @@ namespace UI
             Menu* parent;
 
             glm::vec3 ThemeColor;
-            int MenuWidth;
-            int MaxItemsUntilWrap = 24;
-            float BGopacity       = 1.0f;
-            bool HasHeaderBar     = true;
-            bool CenteredList     = false;
+            float BGopacity = 1.0f;
+            int  MenuWidth;
+            int  MaxItemsUntilWrap = 24;
+            bool HiearchyView = false;
+            bool HasHeaderBar = true;
+            bool CenteredList = false;
 
             void Initialize(std::string MenuTitle, glm::vec3 ThemeCol);
             void Initialize(std::string MenuTitle, glm::vec3 ThemeCol, std::vector<std::string>* Items);

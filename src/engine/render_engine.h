@@ -16,6 +16,7 @@ namespace Engine
 
     void RegisterResizeCallback(const std::function<void(int, int)>& callback);
     void RegisterEditorFunction(const std::function<void()>& func);
+    void RegisterEditorDraw3DFunction(const std::function<void()>& func);
 
     // Running
     void Initialize();

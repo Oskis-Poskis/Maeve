@@ -45,6 +45,11 @@ namespace qk
         return combinedPath.lexically_normal().string();
     }
 
+    float MapRange(float Input, float InputMin, float InputMax, float OutputMin, float OutputMax)
+    {
+        return OutputMin + ((OutputMax - OutputMin) / (InputMax - InputMin)) * (Input - InputMin);
+    }
+
     std::string FormatVec(glm::vec3 vec, int decimals)
     {
         return std::format("({:.{}f}, {:.{}f}, {:.{}f})", 

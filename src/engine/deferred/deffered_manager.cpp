@@ -25,9 +25,9 @@ namespace Deferred
     unsigned int screenQuadVAO, screenQuadVBO;
     std::unique_ptr<Shader> S_quad;
 
-    unsigned int GBuffers[4];
+    unsigned int GBuffers[5];
 
-    void CreateFBO()
+    void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
 
@@ -49,17 +49,24 @@ namespace Deferred
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, GBuffers[GNormal], 0);
 
+        // Mask
+        glGenTextures(1, &GBuffers[GMask]);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GMask]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, GBuffers[GMask], 0);
+
         // Depth Stencil
-        glGenTextures(1, &GBuffers[GDepthStencil]);
-        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepthStencil]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, GBuffers[GDepthStencil], 0);
+        glGenTextures(1, &GBuffers[GDepth]);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, GBuffers[GDepth], 0);
 
         if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) std::cout << "Deffered Frambuffer successfully initialized\n\n";
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        s_shading = std::make_unique<Shader>("/res/shaders/deferred/shading");
+        S_shading = std::make_unique<Shader>("/res/shaders/deferred/shading");
+        S_mask = std::make_unique<Shader>("/res/shaders/deferred/mask");
         S_quad = std::make_unique<Shader>("/res/shaders/deferred/texture");
         S_fullscreenQuad = std::make_unique<Shader>("/res/shaders/deferred/texture_fullscreen");
+        S_postprocessQuad = std::make_unique<Shader>("/res/shaders/deferred/postprocess");
 
         glGenVertexArrays(1, &defferedQuadVAO);
         glGenVertexArrays(1, &screenQuadVAO);
@@ -84,7 +91,7 @@ namespace Deferred
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GAlbedo]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -93,8 +100,15 @@ namespace Deferred
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepthStencil]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GMask]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0,  GL_RED, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
@@ -122,12 +136,41 @@ namespace Deferred
         glEnable(GL_DEPTH_TEST);
     }
 
-    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel)
+    void DrawPostProcessQuad()
+    {
+        S_postprocessQuad->Use();
+        S_postprocessQuad->SetInt("framebuffer", GShaded);
+        S_postprocessQuad->SetInt("mask", GMask);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GMask]);
+
+        glBindVertexArray(defferedQuadVAO);
+
+        glDisable(GL_DEPTH_TEST);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel, bool sampleStencil)
     {
         S_quad->Use();
-        S_quad->SetInt("isDepth", singleChannel);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        if (sampleStencil)
+        {
+            S_quad->SetInt("isDepth", singleChannel);
+            S_quad->SetInt("sampleStencil", true);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+        }
+        else
+        {
+            S_quad->SetInt("isDepth", singleChannel);
+            S_quad->SetInt("sampleStencil", false);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture);
+        }
 
         float vertices[8] =
         {
@@ -144,34 +187,54 @@ namespace Deferred
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
+    void DrawMask()
+    {
+        glDisable(GL_DEPTH_TEST);
+
+        Deferred::S_mask->Use();
+        Deferred::S_mask->SetMatrix4("projection", AssetManager::ProjMat4);
+        Deferred::S_mask->SetMatrix4("view", AssetManager::ViewMat4);
+        
+        auto &obj = SceneManager::Objects[SceneManager::GetSelectedIndex()];
+        auto &mesh = AssetManager::Meshes.at(obj.GetMeshID());
+        int numElements = mesh.TriangleCount * 3;
+        glBindVertexArray(mesh.VAO);
+
+        Deferred::S_mask->SetMatrix4("model", obj.GetModelMatrix());
+        if (mesh.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
+        else glDrawArrays(GL_TRIANGLES, 0, mesh.TriangleCount * 3);
+
+        glEnable(GL_DEPTH_TEST);
+    }
+
     void DoShading()
     {
-        glDepthMask(false); 
-        s_shading->Use();
-        s_shading->SetVector3("cDir", AssetManager::EditorCam.Front);
-        s_shading->SetVector3("cPos", AssetManager::EditorCam.Position);
-        s_shading->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
-        s_shading->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
+        glDepthMask(false);
+        S_shading->Use();
+        S_shading->SetVector3("cDir", AssetManager::EditorCam.Front);
+        S_shading->SetVector3("cPos", AssetManager::EditorCam.Position);
+        S_shading->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
+        S_shading->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
 
-        s_shading->SetInt("NumPointLights", SceneManager::Lights.size());
+        S_shading->SetInt("NumPointLights", SceneManager::Lights.size());
         for (int i = 0; i < SceneManager::Lights.size(); i++)
         {
-            s_shading->SetVector3(std::format("PointLights[{}].", i) + "position", SceneManager::Lights[i].GetPosition());
-            s_shading->SetVector3(std::format("PointLights[{}].", i) + "color",    SceneManager::Lights[i].GetColor());
-            s_shading->SetFloat(std::format("PointLights[{}].", i) + "intensity",  SceneManager::Lights[i].GetIntensity());
+            S_shading->SetVector3(std::format("PointLights[{}].", i) + "position",  SceneManager::Lights[i].GetPosition());
+            S_shading->SetVector3(std::format("PointLights[{}].", i) + "color",     SceneManager::Lights[i].GetColor());
+            S_shading->SetFloat(std::format("PointLights[{}].", i)   + "intensity", SceneManager::Lights[i].GetIntensity());
         }
         
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GAlbedo]);
-        s_shading->SetInt("GAlbedo", GAlbedo);
+        S_shading->SetInt("GAlbedo", GAlbedo);
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);
-        s_shading->SetInt("GNormal", GNormal);
+        S_shading->SetInt("GNormal", GNormal);
 
-        glActiveTexture(GL_TEXTURE3);
-        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepthStencil]);
-        s_shading->SetInt("GDepth", GDepthStencil);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
+        S_shading->SetInt("GDepth", GDepth);
         
         glBindVertexArray(defferedQuadVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -192,13 +255,17 @@ namespace Deferred
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f);
         Text::RenderCentered("GNormal", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
-        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepthStencil), true);
+        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepth), true);
         pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length);
-        Text::RenderCentered("GDepthStencil", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        Text::RenderCentered("GDepth", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length * 2), glm::vec2(1.0f - length, 1.0f - length), Deferred::GetTexture(Deferred::GShaded));
         pos = qk::NDCToPixel(1.0f - length * 1.5f, 1.0f - length);
         Text::RenderCentered("GShaded", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+
+        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 3), glm::vec2(1.0f, 1.0f - length * 2), Deferred::GetTexture(Deferred::GMask), true);
+        pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length * 2);
+        Text::RenderCentered("GMask", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
 
         glEnable(GL_DEPTH_TEST);
     }

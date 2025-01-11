@@ -29,6 +29,7 @@ Point:
 
 // Engine
 ⦁ Object Outlines
+⦁ Children
 ⦁ Input at 60 fps ✅
 ⦁ UI Hot Menus (Tab)
     𐩑 Home ✅
