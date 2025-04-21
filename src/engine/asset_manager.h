@@ -5,21 +5,89 @@
 #include <unordered_map>
 
 #include <glm/glm.hpp>
+
 #include "../common/shader.h"
 #include "../common/camera.h"
 
-namespace AssetManager
+namespace AM
 {
     struct VtxData
     {
         glm::vec3 Position;
         glm::vec3 Normal;
+        
+        VtxData(glm::vec3 pos, glm::vec3 norm) : Position(pos), Normal(norm) {}
     };
 
     struct MeshData
     {
         std::vector<VtxData> VertexData;
         std::vector<unsigned int> Indices;
+    };
+
+    struct Tri
+    {
+        Tri() : id0(0), id1(0), id2(0) {}
+        Tri(unsigned int Id0, unsigned int Id1, unsigned int Id2) : id0(Id0), id1(Id1), id2(Id2) {}
+
+        unsigned int id0, id1, id2;
+
+        glm::vec3 GetCenter(const std::vector<VtxData>& vertices) const;
+    };
+
+    struct AABB
+    {
+        AABB() : min(glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX)), max(glm::vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX)) {}
+        AABB(glm::vec3 Min, glm::vec3 Max) : min(Min), max(Max) {}
+
+        glm::vec3 min;
+        glm::vec3 max;
+
+        glm::vec3 GetCenter();
+        glm::vec3 GetScale();
+        glm::mat4 GetMatrixRelativeToParent(const glm::mat4& ParentMatrix);
+
+        static AABB Compute(const std::vector<VtxData>& vertices, const std::vector<Tri>& triIndices, unsigned int start, unsigned int count);
+        static AABB Combine(const AABB& a, const AABB& b);
+        static int getLongestAxis(const AABB& aabb);
+        void Merge(const AABB& other);
+    };
+
+    struct Ray
+    {
+        Ray(glm::vec3 Origin, glm::vec3 Direction) : origin(Origin), direction(Direction) {}
+        glm::vec3 origin;
+        glm::vec3 direction;
+        float minDistance = 0.0f;
+        float maxDistance = FLT_MAX;
+
+        bool IntersectAABB(const AABB& aabb, float tMin = 0.0f, float tMax = FLT_MAX);
+        bool IntersectTri(const Tri& tri, const std::vector<VtxData>& vertices);
+    };
+
+    struct BVH_Node
+    {
+        AABB aabb;
+        bool isLeaf = false;
+        unsigned int leftChild  = UINT32_MAX;
+        unsigned int rightChild = UINT32_MAX;
+        unsigned int start = 0;
+        unsigned int count = 0;
+    };
+
+    struct BVH
+    {
+        public:
+            unsigned int rootIdx;
+            std::vector<BVH_Node> bvhNodes;
+            std::vector<Tri> triIndices;
+
+            void Build(const std::vector<VtxData>& vertices);
+            void DrawBVH(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix);
+            void TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices);
+
+        private:
+            unsigned int build_recursive(const std::vector<VtxData>& vertices, unsigned int start, unsigned int count);
     };
 
     struct Mesh
@@ -30,17 +98,28 @@ namespace AssetManager
         int  TriangleCount;
         bool UseElements;
 
-        Mesh(std::vector<VtxData> VertexData);
-        Mesh(std::vector<VtxData> VertexData, std::vector<unsigned int> Faces);
+        std::vector<VtxData> vertexData;
+        std::vector<unsigned int> indices;
+
+        AABB aabb;
+        unsigned int rootNodeId = 0;
+        unsigned int nodesUsed  = 1;
+        BVH bvh;
+        
+        Mesh(const std::vector<VtxData>& VertexData);
+        Mesh(const std::vector<VtxData>& VertexData, std::vector<unsigned int> Faces);
     };
 
     void Initialize();
-    void AddMeshByData(std::vector<VtxData> VertexData, std::string Name);
-    void AddMeshByData(std::vector<VtxData> VertexData, std::vector<unsigned int> Faces, std::string Name);
+    void AddMeshByData(const std::vector<VtxData>& VertexData, std::string Name);
+    void AddMeshByData(const std::vector<VtxData>& VertexData, std::vector<unsigned int> Faces, std::string Name);
+    // std::vector<glm::vec3> ExtractPositionsFromVtxData(const std::vector<VtxData>& vertexData);
     
     inline std::unordered_map<std::string, Mesh> Meshes;
     inline std::vector<std::string> MeshNames;
+    inline std::vector<std::string> LightNames = { "Point Light" };
     inline std::unique_ptr<Shader> S_GBuffers;
+    inline std::unique_ptr<Shader> S_BVHVis;
     inline std::unique_ptr<Shader> S_SingleColor;
     inline std::unique_ptr<Shader> S_Lambert;
     inline int UniqueMeshTriCount;
@@ -117,5 +196,22 @@ namespace AssetManager
             18, 17, 16, 19, 18, 16, // Left Face
             20, 21, 22, 20, 22, 23  // Back Face
         };
+
+        inline std::vector<VtxData> CubeOutlineVtxData = {
+            VtxData(glm::vec3(-1.0f, -1.0f, -1.0f), glm::vec3(0.0f)), // 0
+            VtxData(glm::vec3( 1.0f, -1.0f, -1.0f), glm::vec3(0.0f)), // 1
+            VtxData(glm::vec3( 1.0f,  1.0f, -1.0f), glm::vec3(0.0f)), // 2
+            VtxData(glm::vec3(-1.0f,  1.0f, -1.0f), glm::vec3(0.0f)), // 3
+            VtxData(glm::vec3(-1.0f, -1.0f,  1.0f), glm::vec3(0.0f)), // 4
+            VtxData(glm::vec3( 1.0f, -1.0f,  1.0f), glm::vec3(0.0f)), // 5
+            VtxData(glm::vec3( 1.0f,  1.0f,  1.0f), glm::vec3(0.0f)), // 6
+            VtxData(glm::vec3(-1.0f,  1.0f,  1.0f), glm::vec3(0.0f))  // 7
+        };
+        inline std::vector<unsigned int> CubeOutlineIndices = {
+            0, 1, 1, 2, 2, 3, 3, 0, // bottom
+            4, 5, 5, 6, 6, 7, 7, 4, // top
+            0, 4, 1, 5, 2, 6, 3, 7  // sides
+        };
+
     }
 }
