@@ -1,7 +1,10 @@
 # Maeve
 Custom game engine hobby project
 
-Makefile is made for linux and uses shared libraries, won't work on windows yet
+Makefile is supposed to work for Windows and Linux.
+Windows...
+Linux requires libglm-dev, libglfw-dev, libfreetype6-dev and glad
+
 ### Features
 * Deferred phong shading (position reconstruction from depth) & OBJ file parsing
 ![](Doc/Viewport.png)
