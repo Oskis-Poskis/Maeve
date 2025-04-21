@@ -23,6 +23,10 @@ uniform mat4 viewMatrix;
 uniform vec3 cDir;
 uniform vec3 cPos;
 
+const vec3 BG = vec3(0.1, 0.1, 0.1);
+const float near = 0.1;
+const float far  = 1000.0;
+
 vec3 ViewPosFromDepth();
 vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, vec3 viewpos, vec3 viewdir);
 
@@ -47,15 +51,18 @@ void main()
     final += mix(-NoiseCalc, NoiseCalc, random(uvs));
 
     fragColor = vec4(final, 1.0);
+    if (normal.x == 1.0 && normal.y == 1.0 && normal.z == 1.0) fragColor = vec4(BG, 1.0);
+    else if (normal.x == 0.0 && normal.y == 0.0 && normal.z == 0.0) fragColor = vec4(BG, 1.0);
 }
 
 vec3 ViewPosFromDepth()
 {
-    float z = texture(GDepth, uvs).r * 2.0 - 1.0;
-    vec4 clip_space_position = vec4(uvs * 2.0 - vec2(1.0), z, 1.0);
-    vec4 position = iProjMatrix * clip_space_position;
+    float depth = texture(GDepth, uvs).r;
 
-    return position.xyz / position.w;
+    vec2 ndc = uvs * 2.0 - 1.0;
+    vec4 clip = vec4(ndc, depth * 2.0 - 1.0, 1.0);
+    vec4 view = iProjMatrix * clip;
+    return view.xyz / view.w;
 }
 
 vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, vec3 viewPos, vec3 viewDir)

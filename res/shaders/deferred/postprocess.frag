@@ -18,9 +18,10 @@ void main()
     float outlinemask = 0.0;
     for (float i = 0.0; i < TAU; i += TAU / numSteps)
     {
-        vec2 offset = vec2(sin(i), cos(i)) * 0.002;
+        vec2 offset = vec2(sin(i), cos(i)) * 0.0015;
         outlinemask = mix(outlinemask, 1.0, texture(mask, uvs + offset).r);
     }
+
     vec3 outline_applied = mix(shaded, vec3(255, 159, 44) / 255.0, outlinemask - stencil);
 
     FragColor = vec4(outline_applied, 1.0);

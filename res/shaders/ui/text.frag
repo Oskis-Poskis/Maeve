@@ -9,7 +9,7 @@ void main()
 {    
     float d = texture(text, TexCoords).r;
     float aaf = fwidth(d);
-    float test = 0.485;
+    float test = 0.5;
     float alpha = smoothstep(test - aaf, test + aaf, d);
     fragColor = vec4(color, alpha);
 }  
