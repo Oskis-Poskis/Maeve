@@ -3,8 +3,9 @@
 #include <array>
 #include <functional>
 
-#include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include "ui.h"
 #include "text_renderer.h"
@@ -18,18 +19,16 @@
 namespace UI
 {
     void Resize(int width, int height);
-    void RecalcMenuWidths(Menu &targetmenu);
+    void RecalcMenuWidths(Menu* targetmenu);
 
     void DrawList(int xoffset, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient = false);
     void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
-
-    void SceneManagerChild(std::string title, float xoffset, float yoffset);
 
     std::unique_ptr<Shader> menuShader, defocusShader;
 
     unsigned int defocusVAO;
     unsigned int menuVAO, menuVBO;
-    std::array<float, 8> vertices;
+    std::array<int, 8> vertices;
 
     // ---- replace with config file? ----
 
@@ -50,7 +49,7 @@ namespace UI
     // Item
     float ItemTextScaling = 0.55f;
     int   ItemPaddingXPX  = 25;
-    int   ItemPaddingYPX  = 5;
+    int   ItemPaddingYPX  = 7;
     int   ItemSelectionThickness = 3;
     int   ItemDistanceShade = 6;
     float ItemShadePct(0.5f);
@@ -81,37 +80,32 @@ namespace UI
          Menu qk;
 
     bool inMenu = false;
+    bool grabbingMenu = false;
     int menuDepth = 0;
     float xoffset = 0;
 
     Menu* activemenu;
     Menu* toplevelmenu;
 
+    void Eject()
+    {
+        inMenu = false;    
+    }
+
     void Render()
     {
         glDisable(GL_DEPTH_TEST);
 
-        if (Input::KeyPressed(GLFW_KEY_TAB)) 
-        {
-            if (inMenu)
-            {
-                inMenu = false;
-                Input::SetInputContext(Input::Game);
-            }
-            else
-            {
-                inMenu = true;
-                Input::SetInputContext(Input::Menu);
-            }
+        if (Input::KeyPressed(GLFW_KEY_TAB)) {
+            inMenu = !inMenu;
+            Input::SetInputContext(inMenu ? Input::Menu : Input::Game);
         }
         if (Input::KeyDown(GLFW_KEY_ESCAPE)) inMenu = false;
 
-        if (Input::KeyDown(GLFW_KEY_LEFT_SHIFT))
-        {
+        if (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) {
             // Scene manager
-            if (Input::KeyPressed(GLFW_KEY_SPACE))
-            {
-                activemenu = &mainMenu.SubMenus[0];
+            if (Input::KeyPressed(GLFW_KEY_SPACE)) {
+                activemenu = mainMenu.SubMenus[0];
                 mainMenu.SelectedSubMenu = 0;
 
                 inMenu = true;
@@ -119,19 +113,17 @@ namespace UI
             }
             if (Input::KeyPressed(GLFW_KEY_A))
             {
-                activemenu = &meshes;
-                assetManager.SelectedSubMenu = 0;
+                activemenu = &assetManager;
+                mainMenu.SelectedSubMenu = 1;
 
                 inMenu = true;
                 Input::SetInputContext(Input::Menu);
             }
         }
         // Asset manager
-        if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL))
-        {
-            if (Input::KeyPressed(GLFW_KEY_SPACE))
-            {
-                activemenu = &mainMenu.SubMenus[1];
+        if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL)) {
+            if (Input::KeyPressed(GLFW_KEY_SPACE)) {
+                activemenu = mainMenu.SubMenus[1];
                 mainMenu.SelectedSubMenu = 1;
 
                 inMenu = true;
@@ -139,25 +131,34 @@ namespace UI
             }
         }
 
-        if (Input::KeyPressed(GLFW_KEY_PERIOD))
-        {
+        if (Input::KeyPressed(GLFW_KEY_PERIOD)) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() + 0.2f);
             Resize(0, 0);
-            RecalcMenuWidths(*toplevelmenu);
+            RecalcMenuWidths(toplevelmenu);
         }
-        if (Input::KeyPressed(GLFW_KEY_COMMA))
-        {
+        if (Input::KeyPressed(GLFW_KEY_COMMA)) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() - 0.2f);
             Resize(0, 0);
-            RecalcMenuWidths(*toplevelmenu);
+            RecalcMenuWidths(toplevelmenu);
         }
 
-        right_edge  = centerX + mainMenu.MenuWidth / 2;
-        left_edge   = centerX - mainMenu.MenuWidth / 2;
-        top_edge    = centerY + MenuStartY;
+        if (inMenu) {
+            // if (isRectHovered({ left_edge, top_edge - titleHeight },
+            //                   { left_edge + activemenu->MenuWidth, top_edge /* + yoffset*/ }) || grabbingMenu)
+            // {
+            //     if (Input::LeftMBDown()) grabbingMenu = true;
+            // }
+            if (Input::KeyPressed(GLFW_KEY_G)) grabbingMenu = !grabbingMenu;
+            if (grabbingMenu) {
+                if (Input::LeftMBDown()) grabbingMenu = false;
+                centerX += Input::GetMouseDeltaX();
+                centerY += Input::GetMouseDeltaY();
+            }
 
-        if (inMenu)
-        {   
+            right_edge  = centerX + mainMenu.MenuWidth / 2;
+            left_edge   = centerX - mainMenu.MenuWidth / 2;
+            top_edge    = centerY + MenuStartY;
+
             // BG tint
             defocusShader->Use();
             glBindVertexArray(defocusVAO);
@@ -173,8 +174,10 @@ namespace UI
     float elapsed = 0;
     void Menu::Render()
     {
+        Input(NumItems);
+
         menuShader->Use();
-        menuShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
+        menuShader->SetMatrix4("projection", AM::OrthoProjMat4);
 
         elapsed = glm::clamp(elapsed + Stats::GetDeltaTime() * animSpeed, 0.0f, 1.0f);
         blend = glm::smoothstep(0.0f, 1.0f, elapsed);
@@ -187,19 +190,16 @@ namespace UI
 
         int yoffset = CenteredList ? itemHeightPX * (SelectedSubMenu % MaxItemsUntilWrap) : 0;
 
-        if (HasItems)
-        {
+        if (HasItems) {
             NumItems = Items->size();
             DrawList(0, yoffset, *Items, *this, CenteredList);
         }
-        else
-        {
+        else {
             std::vector<std::string> items;
-            for (Menu &obj : SubMenus) items.push_back(obj.Title);
+            for (Menu* obj : SubMenus) items.push_back(obj->Title);
             NumItems = items.size();
             DrawList(0, yoffset, items, *this, CenteredList);
         }
-        Input(NumItems);
     }
 
     float y_timer = 0.0f;
@@ -208,10 +208,7 @@ namespace UI
     {
         if (ExtraInput) ExtraInput();
 
-        if (Input::KeyPressed(GLFW_KEY_HOME))
-        {
-            SelectedSubMenu = 0;
-        }
+        if (Input::KeyPressed(GLFW_KEY_HOME)) SelectedSubMenu = 0;
         if (Input::KeyPressed(GLFW_KEY_END))
         {
             if (SubMenus.size() > 0) SelectedSubMenu = SubMenus.size() - 1;
@@ -221,28 +218,23 @@ namespace UI
         int mult = (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) ? stepMultiplier : 1;
 
         x_timer += Stats::GetDeltaTime();
-        if (x_timer >= 1 / (5.0f * mult) || Input::KeyPressed(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_LEFT))
-        {
+        if (x_timer >= 1 / (5.0f * mult) || Input::KeyPressed(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_LEFT)) {
             x_timer = 0.0f;
 
             if (Input::KeyDown(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_RIGHT))
             {
-                if (SubMenus.size() > 0) activemenu = &SubMenus[SelectedSubMenu];
+                if (SubMenus.size() > 0) activemenu = SubMenus[SelectedSubMenu];
                 else if (Items && GetActiveColumn() != GetNumColumns()) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size() - 1);
             }
             if ((Input::KeyDown(GLFW_KEY_LEFT) || Input::KeyPressed(GLFW_KEY_LEFT)) && !IsTopLevel)
             {
-                if ((!Items) || (Items && SelectedSubMenu < MaxItemsUntilWrap))
-                {
-                    activemenu = parent;
-                }
+                if ((!Items) || (Items && SelectedSubMenu < MaxItemsUntilWrap)) activemenu = parent;
                 else if (Items && SelectedSubMenu >= MaxItemsUntilWrap) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size(), true);
             }   
         }
 
         y_timer += Stats::GetDeltaTime();
-        if (y_timer >= 1 / (15.0f * mult))
-        {
+        if (y_timer >= 1 / (15.0f * mult)) {
             y_timer = 0.0f;
 
             if (Input::KeyDown(GLFW_KEY_UP))
@@ -291,42 +283,26 @@ namespace UI
         Items = nullptr;
     }
 
-    void Menu::AddSubMenu(Menu &menu)
+    void Menu::AddSubMenu(Menu* menu)
     {
-        menu.parent = this;
+        menu->parent = this;
         SubMenus.push_back(menu);
-    }
-
-    float ChildTitleScaling = 0.75f;
-    void SceneManagerChild(std::string title, float xoffset, float yoffset)
-    {
-        // Outline
-        DrawRect(glm::vec2(right_edge + OutlineWidth - xoffset, top_edge + OutlineWidth),
-                 glm::vec2(left_edge  - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * 5 - OutlineWidth), OutlineColor);
-
-        // Menu Titles
-        DrawRect(glm::vec2(right_edge - xoffset, top_edge),
-                 glm::vec2(left_edge  - xoffset, top_edge - titleHeight), glm::vec3(0.2f));
-        Text::Render(title, centerX - Text::CalculateTextWidth(title, TitleBarTextScaling) / 2.0f - xoffset,
-                     top_edge - titleHeight + TitleBarPaddingYPX, TitleBarTextScaling, ItemTextActive);
     }
 
     void DrawList(int xoffset_, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient)
     {
         int xoffset = xoffset_ - (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
 
+        int vis_below_above = 4;
+
         if (submenu.BGopacity > 0.0f)
         {
-            // Outline
-            /* DrawRect(glm::vec2(right_edge + OutlineWidth - xoffset, top_edge + OutlineWidth + yoffset),
-                     glm::vec2(left_edge - OutlineWidth - xoffset, top_edge - titleHeight - itemHeightPX * items.size() - OutlineWidth + yoffset), OutlineColor, submenu.BGopacity); */
-
             // Header
             if (submenu.HiearchyView)
             {
                 if (submenu.HasHeaderBar)
                 {
-                    DrawRect(glm::vec2(left_edge, top_edge + glm::min(6 * itemHeightPX, yoffset)),
+                    DrawRect(glm::vec2(left_edge, top_edge + glm::min(vis_below_above * itemHeightPX, yoffset)),
                              submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
                 }
             }
@@ -335,19 +311,17 @@ namespace UI
                 if (submenu.HasHeaderBar)
                 {
                     DrawRect(glm::vec2(left_edge, top_edge + yoffset),
-                            submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
+                             submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
                 }
             }
         }
         
         // Title
-        if (submenu.HiearchyView)
-        {
+        if (submenu.HiearchyView) {
             Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
-                         top_edge - titleHeight + TitleBarPaddingYPX + glm::min(6 * itemHeightPX, yoffset), TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
+                         top_edge - titleHeight + TitleBarPaddingYPX + glm::min(vis_below_above * itemHeightPX, yoffset), TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
         }
-        else
-        {
+        else {
             Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
                         top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
         }
@@ -372,10 +346,18 @@ namespace UI
                 
                 if (submenu.HiearchyView)
                 {
-                    if (i < submenu.SelectedSubMenu + 7 && i > submenu.SelectedSubMenu - 7)
+                    if (i <= submenu.SelectedSubMenu + vis_below_above && i >= submenu.SelectedSubMenu - vis_below_above)
                     {
                         DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
                                 submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
+                        if ((i == submenu.SelectedSubMenu + vis_below_above && submenu.SelectedSubMenu >= vis_below_above)) {
+                            Text::Render(std::to_string(items.size() - i) + "...", centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
+                                         top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, ItemTextInactive);
+                        }
+                        else if ((i == submenu.SelectedSubMenu - vis_below_above)) {
+                            Text::Render(std::to_string(i + 1) + "...", centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
+                                         top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, ItemTextInactive);
+                        }
                     }
                 }
                 else
@@ -388,7 +370,7 @@ namespace UI
 
             if (submenu.HiearchyView)
             {
-                if (i < submenu.SelectedSubMenu + 7 && i > submenu.SelectedSubMenu - 7)
+                if (i <= submenu.SelectedSubMenu + vis_below_above && i > submenu.SelectedSubMenu - vis_below_above && (i != submenu.SelectedSubMenu + vis_below_above || submenu.SelectedSubMenu < vis_below_above))
                 {
                     Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
                                  top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
@@ -409,7 +391,7 @@ namespace UI
                  ItemSelectionThickness, itemHeightPX, submenu.ThemeColor);
     }
 
-    void DrawRect(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 Color, float Opacity)
+    void DrawRect(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 Color, float Opacity)
     {
         vertices = 
         {
@@ -427,7 +409,7 @@ namespace UI
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
-    void DrawRect(glm::vec2 TopLeft, int width, int height, glm::vec3 Color, float Opacity)
+    void DrawRect(glm::ivec2 TopLeft, int width, int height, glm::vec3 Color, float Opacity)
     {
         vertices = 
         {
@@ -445,13 +427,24 @@ namespace UI
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
-    void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color)
+    bool isRectHovered(glm::ivec2 BottomLeft, glm::ivec2 TopRight)
+    {
+        glm::ivec2 cursor_px = glm::ivec2(Input::GetMouseX(), Input::GetMouseY());
+        cursor_px.y = Engine::GetWindowSize().y - cursor_px.y;
+        
+
+        if (cursor_px.y < TopRight.y && cursor_px.y > BottomLeft.y &&
+            cursor_px.x < TopRight.x && cursor_px.x > BottomLeft.x) return true;
+        return false;
+    }
+
+    void DrawArrow(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 color)
     {
         vertices = 
         {
             BottomLeft.x, TopRight.y - ItemSelectionThickness,
             BottomLeft.x, BottomLeft.y + ItemSelectionThickness,
-            BottomLeft.x + ItemSelectionThickness * 2, (TopRight.y + BottomLeft.y) / 2.0f
+            BottomLeft.x + ItemSelectionThickness * 2, (TopRight.y + BottomLeft.y) / 2
         };
         menuShader->Use();
         menuShader->SetVector3("color", color);
@@ -461,12 +454,12 @@ namespace UI
         glDrawArrays(GL_TRIANGLE_FAN, 0, 3);
     }
 
-    void RecalcMenuWidths(Menu &targetmenu)
+    void RecalcMenuWidths(Menu* targetmenu)
     {
-        targetmenu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
-        for (auto &menu : targetmenu.SubMenus)
+        targetmenu->MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
+        for (auto &menu : targetmenu->SubMenus)
         {
-            menu.MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
+            menu->MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
             RecalcMenuWidths(menu);
         }
     }
@@ -475,14 +468,25 @@ namespace UI
     {
         if (Input::KeyPressed(GLFW_KEY_ENTER))
         {
-            std::string name = AssetManager::MeshNames[activemenu->SelectedSubMenu];
-            SceneManager::AddObject(SceneManager::Object(name, name));
+            std::string name = AM::MeshNames[activemenu->SelectedSubMenu];
+            SM::Object* obj = new SM::Object(name, name);
+            SM::AddNode(obj);
+        }
+    }
+
+    void LightsInput()
+    {
+        if (Input::KeyPressed(GLFW_KEY_ENTER))
+        {
+            std::string name = AM::LightNames[activemenu->SelectedSubMenu];
+            SM::Light* light = new SM::Light("Point Light", SM::LightType::Point, glm::vec3(0), 10.0f, glm::vec3(1), 5.0f);
+            SM::AddNode(light);
         }
     }
 
     void SceneManagerInput()
     {
-        SceneManager::SelectObject(activemenu->SelectedSubMenu);
+        SM::SelectSceneType(activemenu->SelectedSubMenu);
         if (Input::KeyPressed(GLFW_KEY_ENTER))
         {
             activemenu->HiearchyView = !activemenu->HiearchyView;
@@ -498,7 +502,7 @@ namespace UI
     {
         Engine::RegisterResizeCallback(Resize);
 
-        menuShader      = std::make_unique<Shader>("/res/shaders/ui/menu");
+        menuShader    = std::make_unique<Shader>("/res/shaders/ui/menu");
         defocusShader = std::make_unique<Shader>("/res/shaders/ui/defocus");
 
         glGenVertexArrays(1, &menuVAO);
@@ -506,10 +510,10 @@ namespace UI
 
         glBindVertexArray(menuVAO);
         glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 2 * 6, NULL, GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(int) * 2 * 6, NULL, GL_DYNAMIC_DRAW);
 
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+        glVertexAttribPointer(0, 2, GL_INT, GL_FALSE, sizeof(int) * 2, 0);
 
         // Dummy VAO for fullscreen quad vert shader
         glGenVertexArrays(1, &defocusVAO);
@@ -522,36 +526,37 @@ namespace UI
         mainMenu.BGopacity = 0.0f;
         mainMenu.HasHeaderBar = false;
         {
-            sceneManager.Initialize("Scene Manager", SecondaryColor, &SceneManager::ObjectNames);
+            sceneManager.Initialize("Scene Manager", SecondaryColor, &SM::SceneNodeNames);
             sceneManager.CenteredList = true;
             sceneManager.ExtraInput = SceneManagerInput;
 
             assetManager.Initialize("Asset Manager", TertieryColor);
             {
-                meshes.Initialize("Meshes", SecondaryColor, &AssetManager::MeshNames);
+                meshes.Initialize("Meshes", SecondaryColor, &AM::MeshNames);
                 meshes.ExtraInput = MeshesInput;
 
-                lights.Initialize("Lights", SecondaryColor);
+                lights.Initialize("Lights", SecondaryColor, &AM::LightNames);
+                lights.ExtraInput = LightsInput;
 
                 materials.Initialize("Materials", SecondaryColor);
 
                 textures.Initialize("Textures", SecondaryColor);
             }
-            assetManager.AddSubMenu(meshes);
-            assetManager.AddSubMenu(lights);
-            assetManager.AddSubMenu(materials);
-            assetManager.AddSubMenu(textures);
+            assetManager.AddSubMenu(&meshes);
+            assetManager.AddSubMenu(&lights);
+            assetManager.AddSubMenu(&materials);
+            assetManager.AddSubMenu(&textures);
             
             statistics.Initialize("Statistics", SecondaryColor);
             engine.Initialize("Engine",         SecondaryColor);
             qk.Initialize("Qk",                 SecondaryColor);
         }
         
-        mainMenu.AddSubMenu(sceneManager);
-        mainMenu.AddSubMenu(assetManager);
-        mainMenu.AddSubMenu(statistics);
-        mainMenu.AddSubMenu(engine);
-        mainMenu.AddSubMenu(qk);
+        mainMenu.AddSubMenu(&sceneManager);
+        mainMenu.AddSubMenu(&assetManager);
+        mainMenu.AddSubMenu(&statistics);
+        mainMenu.AddSubMenu(&engine);
+        mainMenu.AddSubMenu(&qk);
 
         activemenu = &mainMenu;
         toplevelmenu = &mainMenu;
@@ -559,12 +564,12 @@ namespace UI
 
     void Resize(int width, int height)
     {
-        titleHeight = Text::CalculateMaxTextHeight("A", TitleBarTextScaling) + TitleBarPaddingYPX * 2;
-        itemHeightPX = Text::CalculateMaxTextHeight("A", ItemTextScaling) + ItemPaddingYPX * 2;
+        titleHeight = Text::CalculateMaxTextAscent("A", TitleBarTextScaling) + TitleBarPaddingYPX * 2;
+        itemHeightPX = Text::CalculateMaxTextAscent("A", ItemTextScaling) + ItemPaddingYPX * 2;
         centerX = Engine::GetWindowSize().x / 2.0f;
         centerY = Engine::GetWindowSize().y / 2.0f;
         
         menuShader->Use();
-        menuShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
+        menuShader->SetMatrix4("projection", AM::OrthoProjMat4);
     }
 }

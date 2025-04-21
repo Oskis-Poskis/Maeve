@@ -1,14 +1,17 @@
 #pragma once
 
 #include <vector>
+#include <functional>
 
 namespace UI
 {
     void Initialize();
     void Render();
+    void Eject();
 
-    void DrawRect(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 Color, float Opacity = 1.0f);
-    void DrawRect(glm::vec2 TopLeft, int width, int height, glm::vec3 Color, float Opacity = 1.0f);
+    void DrawRect(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 Color, float Opacity = 1.0f);
+    void DrawRect(glm::ivec2 TopLeft, int width, int height, glm::vec3 Color, float Opacity = 1.0f);
+    bool isRectHovered(glm::ivec2 BottomLeft, glm::ivec2 TopRight);
 
     class Menu
     {
@@ -22,7 +25,7 @@ namespace UI
             int NumItems        = 0;
             bool IsTopLevel     = false;
             bool HasItems       = false;
-            std::vector<Menu> SubMenus;
+            std::vector<Menu*> SubMenus;
             std::vector<std::string>* Items;
             std::function<void()> ExtraInput;
             Menu* parent;
@@ -39,7 +42,7 @@ namespace UI
             void Initialize(std::string MenuTitle, glm::vec3 ThemeCol, std::vector<std::string>* Items);
 
             void Render();
-            void AddSubMenu(Menu &menu);
+            void AddSubMenu(Menu* menu);
             int  GetNumColumns();
             int  GetActiveColumn();
 
