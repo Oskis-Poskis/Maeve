@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <GLFW/glfw3.h>
+
 #include "input.h"
 #include "stat_counter.h"
 #include "../engine/render_engine.h"
@@ -31,7 +33,7 @@ namespace Input
             for (int i = 32; i < 348; i++)
             {
                 // Key Down
-                if (glfwGetKey(Engine::GetWindowPointer(), i) == GLFW_PRESS) _keyDown[i] = true;
+                if (glfwGetKey(Engine::WindowPtr(), i) == GLFW_PRESS) _keyDown[i] = true;
                 else _keyDown[i] = false;
 
                 // Single Press
@@ -41,7 +43,7 @@ namespace Input
                 _keyDownLastFrame[i] = _keyDown[i];
             }
 
-            glfwGetCursorPos(Engine::GetWindowPointer(), &_mouseX, &_mouseY);
+            glfwGetCursorPos(Engine::WindowPtr(), &_mouseX, &_mouseY);
 
             _xDelta = _mouseX - _lastX;
             _yDelta = _lastY - _mouseY;
@@ -93,12 +95,22 @@ namespace Input
 
     bool RightMBDown()
     {
-        return glfwGetMouseButton(Engine::GetWindowPointer(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS ? 1 : 0;
+        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS ? 1 : 0;
     }
 
     bool LeftMBDown()
     {
-        return glfwGetMouseButton(Engine::GetWindowPointer(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS ? 1 : 0;
+        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS ? 1 : 0;
+    }
+
+    bool MiddleMBDown()
+    {
+        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_3) == GLFW_PRESS ? 1 : 0;
+    }
+
+    glm::vec2 GetMouseXY()
+    {
+        return glm::vec2(_mouseX, _mouseY);
     }
 
     float GetMouseX()

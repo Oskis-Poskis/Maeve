@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 namespace Input
 {
     enum InputContext
@@ -21,7 +23,9 @@ namespace Input
     void ResetKeyPress(unsigned int keycode);
     bool LeftMBDown();
     bool RightMBDown();
+    bool MiddleMBDown();
 
+    glm::vec2 GetMouseXY();
     float GetMouseX();
     float GetMouseY();
     float GetMouseDeltaX();
