@@ -17,8 +17,8 @@ const float YAW   = -90.0f;
 const float PITCH =  0.0f;
 const float SPEED =  10.0f;
 const float FOV   =  50.0f;
-const float INTERPOLATION_MULTIPLIER = 15.0f;
-const float SENSITIVITY = 0.1f;
+const float INTERPOLATION_MULTIPLIER = 0.1f;
+const float SENSITIVITY = 0.125f;
 
 class Camera
 {
@@ -35,6 +35,8 @@ class Camera
         float Fov;
         float InterpolationMultiplier;
         float Sensitivity;
+        bool  Moving;
+        bool  Turning;
 
         Camera();
         Camera(glm::vec3 position, float fov, float yaw, float pitch);

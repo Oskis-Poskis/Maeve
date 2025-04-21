@@ -1,5 +1,8 @@
 #include <iostream>
 
+#include <GLFW/glfw3.h>
+
+#include "qk.h"
 #include "camera.h"
 #include "input.h"
 #include "stat_counter.h"
@@ -11,8 +14,8 @@ Camera::Camera() : Position(glm::vec3(0.0f, 0.0f, 0.0f)),
                    Fov(FOV),
                    Yaw(YAW),
                    Pitch(PITCH),
-                   Front(glm::vec3(0.0f, 0.0f, -1.0f)),
-                   WorldUp(glm::vec3(0.0f, 1.0f, 0.0f)),
+                   Front(glm::vec3(0.0f, 1.0f, 0.0f)),
+                   WorldUp(glm::vec3(0.0f, 0.0f, 1.0f)),
                    Speed(SPEED),
                    Sensitivity(SENSITIVITY),
                    InterpolationMultiplier(INTERPOLATION_MULTIPLIER)
@@ -20,8 +23,8 @@ Camera::Camera() : Position(glm::vec3(0.0f, 0.0f, 0.0f)),
     _updateCameraVectors();
 }
 
-Camera::Camera(glm::vec3 position, float fov, float yaw, float pitch) : Front(glm::vec3(0.0f, 0.0f, -1.0f)),
-                                                                        WorldUp(glm::vec3(0.0f, 1.0f, 0.0f)),
+Camera::Camera(glm::vec3 position, float fov, float yaw, float pitch) : Front(glm::vec3(0.0f, 1.0f, 0.0f)),
+                                                                        WorldUp(glm::vec3(0.0f, 0.0f, 1.0f)),
                                                                         Speed(SPEED),
                                                                         Sensitivity(SENSITIVITY),
                                                                         InterpolationMultiplier(INTERPOLATION_MULTIPLIER)
@@ -75,29 +78,31 @@ void Camera::Update()
     {
         if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
         {
-            glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            Turning = true;
+            glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
             if (firstClick)
             {
-                glfwGetCursorPos(Engine::GetWindowPointer(), &downposx, &downposy);
-                glfwSetCursorPos(Engine::GetWindowPointer(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
+                glfwGetCursorPos(Engine::WindowPtr(), &downposx, &downposy);
+                glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
                 firstClick = false;
                 unrightclick = false;
             }
 
-            glfwGetCursorPos(Engine::GetWindowPointer(), &mousex, &mousey);
+            glfwGetCursorPos(Engine::WindowPtr(), &mousex, &mousey);
             float dy = (float)(mousey - (Engine::GetWindowSize().y / 2));
 		    float dx = (float)(mousex - (Engine::GetWindowSize().x / 2));
             MouseInput(dx, -dy);
             
-            glfwSetCursorPos(Engine::GetWindowPointer(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
+            glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
         }
         else
         {
-            glfwSetInputMode(Engine::GetWindowPointer(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            Turning = false;
+            glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             if (!unrightclick)
             {
-                glfwSetCursorPos(Engine::GetWindowPointer(), downposx, downposy);
+                glfwSetCursorPos(Engine::WindowPtr(), downposx, downposy);
                 unrightclick = true;
             }
             firstClick = true;
@@ -105,15 +110,25 @@ void Camera::Update()
 
         if (!Input::KeyDown(GLFW_KEY_LEFT_SHIFT))
         {
-            if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
-            if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
-            if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
-            if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
-            if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
-            if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
+            Moving = true;
+
+            if (!(Input::KeyDown(GLFW_KEY_W) || Input::KeyDown(GLFW_KEY_S) ||
+                  Input::KeyDown(GLFW_KEY_A) || Input::KeyDown(GLFW_KEY_D) ||
+                  Input::KeyDown(GLFW_KEY_E) || Input::KeyDown(GLFW_KEY_Q)))
+            {
+                Moving = false;
+            }
+            else {
+                if (Input::KeyDown(GLFW_KEY_W)) KeyboardInput(FORWARD);
+                if (Input::KeyDown(GLFW_KEY_S)) KeyboardInput(BACKWARD);
+                if (Input::KeyDown(GLFW_KEY_A)) KeyboardInput(LEFT);
+                if (Input::KeyDown(GLFW_KEY_D)) KeyboardInput(RIGHT);
+                if (Input::KeyDown(GLFW_KEY_E)) KeyboardInput(UP);
+                if (Input::KeyDown(GLFW_KEY_Q)) KeyboardInput(DOWN);
+            }
         }
 
-        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Stats::GetDeltaTime());
+        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier);
         // Position = _targetPosition;
     }
 }
@@ -121,9 +136,9 @@ void Camera::Update()
 void Camera::_updateCameraVectors()
 {
     glm::vec3 front;
-    front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-    front.y = sin(glm::radians(Pitch));
-    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    front.x = cos(glm::radians(-Yaw)) * cos(glm::radians(Pitch));
+    front.y = sin(glm::radians(-Yaw)) * cos(glm::radians(Pitch));
+    front.z = sin(glm::radians(Pitch));
 
     Front = glm::normalize(front);
     Right = glm::normalize(glm::cross(Front, WorldUp));
