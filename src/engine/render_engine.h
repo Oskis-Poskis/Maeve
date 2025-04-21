@@ -1,15 +1,14 @@
 #pragma once
 
 #include <functional>
-
 #include <glm/glm.hpp>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+
+struct GLFWwindow;
 
 namespace Engine
 {
     // Window
-    GLFWwindow* GetWindowPointer();
+    GLFWwindow* WindowPtr();
     glm::ivec2 GetWindowSize();
     glm::ivec2 GetMonitorSize();
     void ToggleFullscreen();
@@ -17,6 +16,7 @@ namespace Engine
     void RegisterResizeCallback(const std::function<void(int, int)>& callback);
     void RegisterEditorFunction(const std::function<void()>& func);
     void RegisterEditorDraw3DFunction(const std::function<void()>& func);
+    void RegisterEditorDrawUIFunction(const std::function<void()>& func);
 
     // Running
     void Initialize();

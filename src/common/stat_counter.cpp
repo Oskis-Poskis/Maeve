@@ -44,7 +44,7 @@ namespace Stats
     {
         std::string memory = std::format("VRAM: {} / {}mb", Stats::GetVramUsageMb(), Stats::GetVRAMTotalMb());
         timer += Stats::GetDeltaTime();
-        if (timer >= (1 / (20.0f)))
+        if (timer >= (1 / (40.0f)))
         {
             timer = 0.0f;
             
@@ -55,8 +55,8 @@ namespace Stats
             ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
         }
 
-        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AssetManager::Meshes.size(), qk::FmtK(AssetManager::UniqueMeshTriCount));
-        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SceneManager::Objects.size(), qk::FmtK(SceneManager::ObjectsTriCount));
+        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AM::Meshes.size(), qk::FmtK(AM::UniqueMeshTriCount));
+        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SM::SceneNodes.size(), qk::FmtK(SM::ObjectsTriCount));
         
         glDisable(GL_DEPTH_TEST);
         float lineSpacing = 20 * Text::GetGlobalTextScaling();

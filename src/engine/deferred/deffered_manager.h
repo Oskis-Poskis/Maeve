@@ -22,7 +22,7 @@ namespace Deferred
     unsigned int GetTexture(GBuffer which);
 
     void DrawFullscreenQuad(unsigned int texture);
-    void DrawPostProcessQuad();
+    void DoPostProcessAndDisplay();
     void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel = false, bool sampleStencil = false);
     void DrawMask();
     void DoShading();

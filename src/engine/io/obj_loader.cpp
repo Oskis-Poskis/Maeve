@@ -15,7 +15,7 @@ using namespace std::chrono;
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace AssetManager::IO
+namespace AM::IO
 {
     bool LineStartsWith(std::string line, std::string compare);
 
@@ -132,10 +132,9 @@ namespace AssetManager::IO
 
         std::vector<VtxData> vertices;
 
-        VtxData vertex{};
         for (unsigned int i = 0; i < numIndices * 3; i++)
         {
-            vertex =
+            VtxData vertex =
             {
                 positions[positionIndices[i]],
                 normals[normalIndices[i]]
@@ -143,12 +142,11 @@ namespace AssetManager::IO
             vertices.push_back(vertex);
         }
 
-        AssetManager::AddMeshByData(vertices, MeshName);
-
         auto stop = high_resolution_clock::now();
-
         auto duration = duration_cast<microseconds>(stop - start).count();
-        std::cout << "[:] Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n\n";
+        std::cout << "[:] Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n";
+
+        AM::AddMeshByData(vertices, MeshName);
     }
 
     bool LineStartsWith(std::string line, std::string comp)

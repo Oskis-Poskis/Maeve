@@ -108,7 +108,7 @@ namespace Deferred
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
@@ -136,7 +136,7 @@ namespace Deferred
         glEnable(GL_DEPTH_TEST);
     }
 
-    void DrawPostProcessQuad()
+    void DoPostProcessAndDisplay()
     {
         S_postprocessQuad->Use();
         S_postprocessQuad->SetInt("framebuffer", GShaded);
@@ -189,39 +189,49 @@ namespace Deferred
 
     void DrawMask()
     {
-        glDisable(GL_DEPTH_TEST);
+        SM::Object* object = dynamic_cast<SM::Object*>(SM::SceneNodes[SM::GetSelectedIndex()]);
+        if (object)
+        {
+            glDisable(GL_DEPTH_TEST);
 
-        Deferred::S_mask->Use();
-        Deferred::S_mask->SetMatrix4("projection", AssetManager::ProjMat4);
-        Deferred::S_mask->SetMatrix4("view", AssetManager::ViewMat4);
-        
-        auto &obj = SceneManager::Objects[SceneManager::GetSelectedIndex()];
-        auto &mesh = AssetManager::Meshes.at(obj.GetMeshID());
-        int numElements = mesh.TriangleCount * 3;
-        glBindVertexArray(mesh.VAO);
+            Deferred::S_mask->Use();
+            Deferred::S_mask->SetMatrix4("projection", AM::ProjMat4);
+            Deferred::S_mask->SetMatrix4("view", AM::ViewMat4);
 
-        Deferred::S_mask->SetMatrix4("model", obj.GetModelMatrix());
-        if (mesh.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
-        else glDrawArrays(GL_TRIANGLES, 0, mesh.TriangleCount * 3);
+            auto &mesh = AM::Meshes.at(object->GetMeshID());
+            int numElements = mesh.TriangleCount * 3;
+            glBindVertexArray(mesh.VAO);
 
-        glEnable(GL_DEPTH_TEST);
+            Deferred::S_mask->SetMatrix4("model", object->GetModelMatrix());
+            if (mesh.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
+            else glDrawArrays(GL_TRIANGLES, 0, mesh.TriangleCount * 3);
+
+            glEnable(GL_DEPTH_TEST);
+        }
+
     }
 
     void DoShading()
     {
         glDepthMask(false);
         S_shading->Use();
-        S_shading->SetVector3("cDir", AssetManager::EditorCam.Front);
-        S_shading->SetVector3("cPos", AssetManager::EditorCam.Position);
-        S_shading->SetMatrix4("iProjMatrix", glm::inverse(AssetManager::ProjMat4));
-        S_shading->SetMatrix4("viewMatrix", AssetManager::ViewMat4);
+        S_shading->SetVector3("cDir", AM::EditorCam.Front);
+        S_shading->SetVector3("cPos", AM::EditorCam.Position);
+        S_shading->SetMatrix4("iProjMatrix", glm::inverse(AM::ProjMat4));
+        S_shading->SetMatrix4("viewMatrix", AM::ViewMat4);
 
-        S_shading->SetInt("NumPointLights", SceneManager::Lights.size());
-        for (int i = 0; i < SceneManager::Lights.size(); i++)
+        S_shading->SetInt("NumPointLights", SM::NumLights);
+        int li = 0;
+        for (size_t i = 0; i < SM::SceneNodes.size(); i++)
         {
-            S_shading->SetVector3(std::format("PointLights[{}].", i) + "position",  SceneManager::Lights[i].GetPosition());
-            S_shading->SetVector3(std::format("PointLights[{}].", i) + "color",     SceneManager::Lights[i].GetColor());
-            S_shading->SetFloat(std::format("PointLights[{}].", i)   + "intensity", SceneManager::Lights[i].GetIntensity());
+            SM::Light* light = dynamic_cast<SM::Light*>(SM::SceneNodes[i]);
+            if (light)
+            {
+                S_shading->SetVector3(std::format("PointLights[{}].", li) + "position",  light->GetPosition());
+                S_shading->SetVector3(std::format("PointLights[{}].", li) + "color",     light->GetColor());
+                S_shading->SetFloat(std::format("PointLights[{}].",   li) + "intensity", light->GetIntensity());
+                li++;
+            }
         }
         
         glActiveTexture(GL_TEXTURE1);
@@ -241,31 +251,33 @@ namespace Deferred
         glDepthMask(true);
     }
 
-    float length = 0.35;
+    float length = 0.275;
     float textScale = 0.5f;
     void VisualizeGBuffers()
     {
         glDisable(GL_DEPTH_TEST);
 
-        DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length), glm::vec2(1.0f - length, 1.0f), Deferred::GetTexture(Deferred::GAlbedo));
-        glm::ivec2 pos = qk::NDCToPixel(1.0f - length * 1.5f, 1.0f);
-        Text::RenderCentered("GAlbedo", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        struct QuadInfo {
+            glm::vec2 BottomLeft, TopRight;
+            Deferred::GBuffer texture;
+            std::string title;
+            bool singleChannel = false;
+        };
 
-        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length), glm::vec2(1.0f, 1.0f), Deferred::GetTexture(Deferred::GNormal));
-        pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f);
-        Text::RenderCentered("GNormal", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        std::vector<QuadInfo> quads =
+        {
+            { {1.0f - length * 2, 1.0f - length},     {1.0f - length, 1.0f},          GAlbedo, "GAlbedo" },
+            { {1.0f - length, 1.0f - length},         {1.0f, 1.0f},                   Deferred::GNormal, "GNormal" },
+            { {1.0f - length * 2, 1.0f - length * 2}, {1.0f - length, 1.0f - length}, Deferred::GDepth,  "Gdepth", true },
+            { {1.0f - length, 1.0f - length * 2},     {1.0f, 1.0f - length},          Deferred::GMask,   "GMask",  true}
+        };
 
-        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 2), glm::vec2(1.0f, 1.0f - length), Deferred::GetTexture(Deferred::GDepth), true);
-        pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length);
-        Text::RenderCentered("GDepth", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        for (auto& quad : quads) {
+            DrawTexturedQuad(quad.BottomLeft, quad.TopRight, Deferred::GetTexture(quad.texture), quad.singleChannel);
 
-        DrawTexturedQuad(glm::vec2(1.0 - length * 2, 1.0f - length * 2), glm::vec2(1.0f - length, 1.0f - length), Deferred::GetTexture(Deferred::GShaded));
-        pos = qk::NDCToPixel(1.0f - length * 1.5f, 1.0f - length);
-        Text::RenderCentered("GShaded", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
-
-        DrawTexturedQuad(glm::vec2(1.0 - length, 1.0f - length * 3), glm::vec2(1.0f, 1.0f - length * 2), Deferred::GetTexture(Deferred::GMask), true);
-        pos = qk::NDCToPixel(1.0f - length * 0.5f, 1.0f - length * 2);
-        Text::RenderCentered("GMask", pos.x, pos.y - Text::CalculateMaxTextHeight("A", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+            glm::ivec2 pos = qk::NDCToPixel(quad.TopRight.x - length * 0.5f, quad.TopRight.y);
+            Text::RenderCenteredBG(quad.title, pos.x, pos.y - Text::CalculateMaxTextAscent("G", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
+        }
 
         glEnable(GL_DEPTH_TEST);
     }
