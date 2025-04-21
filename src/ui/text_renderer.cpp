@@ -2,10 +2,10 @@
 #include <memory>
 #include <iostream>
 
+#include <glm/glm.hpp>
+#include <glad/glad.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#include <glad/glad.h>
-#include <glm/glm.hpp>
 
 #include "text_renderer.h"
 #include "../ui/ui.h"
@@ -14,6 +14,7 @@
 #include "../common/stat_counter.h"
 #include "../engine/asset_manager.h"
 #include "../engine/render_engine.h"
+#include <set>
 
 namespace Text
 {
@@ -49,13 +50,15 @@ namespace Text
         return width;
     }
 
-    float CalculateMaxTextHeight(std::string text, float scale)
+    float CalculateMaxTextAscent(std::string text, float scale)
     {
         float _scale = scale * globalTextScale;
 
-        float maxheight  = 0;
-        int   maxAscent  = 0;
-        int   maxDescent = 0;
+        int maxAscent  = 0;
+        int maxDescent = 0;
+        
+        bool hasDescender = false;
+        std::set<char> descenderChars = {'g', 'j', 'p', 'q', 'y'};
 
         std::string::const_iterator c;
         for (c = text.begin(); c != text.end(); c++)
@@ -63,13 +66,39 @@ namespace Text
             const Character& ch = Characters.at(*c);
             int ascent   = ch.Bearing.y;
             int descent  = ch.Size.y - ascent;
-            int height   = ch.Size.y;
 
             maxAscent  = glm::max(maxAscent,  ascent);
             maxDescent = glm::max(maxDescent, descent);
+
+            if (descenderChars.find(*c) != descenderChars.end()) hasDescender = true;
         }
         
-        return (maxAscent) * _scale;
+        if (hasDescender) return (maxAscent) * _scale;
+        return (maxAscent - maxDescent) * _scale;
+    }
+
+    float CalculateMaxTextDescent(std::string text, float scale)
+    {
+        float _scale = scale * globalTextScale;
+
+        int maxDescent = 0;
+        bool hasDescender = false;
+        std::set<char> descenderChars = {'g', 'j', 'p', 'q', 'y'};
+
+        std::string::const_iterator c;
+        for (c = text.begin(); c != text.end(); c++)
+        {
+            const Character& ch = Characters.at(*c);
+            int ascent   = ch.Bearing.y;
+            int descent  = ch.Size.y - ascent;
+
+            maxDescent = glm::max(maxDescent, descent);
+
+            if (descenderChars.find(*c) != descenderChars.end()) hasDescender = true;
+        }
+        
+        if (hasDescender) return maxDescent * _scale;
+        return 0.0f;
     }
 
     void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color)
@@ -77,12 +106,18 @@ namespace Text
         Render(text, x - CalculateTextWidth(text, scale) / 2.0f, y, scale, color);
     }
 
-    void RenderCentered(std::string text, float x, float y, float scale, glm::vec3 color, glm::vec3 bgColor)
+    void RenderCenteredBG(std::string text, float x, float y, float scale, glm::vec3 color, glm::vec3 bgColor)
     {
-        glm::ivec2 topRight(x + Text::CalculateTextWidth(text, scale) / 2.0f, y + Text::CalculateMaxTextHeight(text, scale));
-        UI::DrawRect(topRight, glm::ivec2(x - topRight.x + x, y), glm::vec3(0.05f), true);
+        float width   = Text::CalculateTextWidth(text, scale);
+        float ascent  = Text::CalculateMaxTextAscent(text, scale);
+        float descent = Text::CalculateMaxTextDescent(text, scale) / 2;
+
+        glm::ivec2 topRight(x + width / 2, y + ascent - descent);
+        glm::ivec2 bottomLeft(x - topRight.x + x, y - descent);
+
+        UI::DrawRect(topRight, bottomLeft, glm::vec3(0.05f), true);
         
-        Render(text, x - CalculateTextWidth(text, scale) / 2.0f, y, scale, color);
+        Render(text, x - width / 2.0f, y, scale, color);
     }
 
     void Render(std::string text, float x, float y, float scale, glm::vec3 color)
@@ -180,7 +215,7 @@ namespace Text
 
             if (FT_Render_Glyph(slot, FT_RENDER_MODE_SDF))
             {
-                std::cout << "Some error idk\n";
+                std::cout << "Failed to render glyph: " << c << "\n";
                 continue;
             }
 
@@ -227,6 +262,6 @@ namespace Text
     void Resize(int width, int height)
     {
         textShader->Use();
-        textShader->SetMatrix4("projection", AssetManager::OrthoProjMat4);
+        textShader->SetMatrix4("projection", AM::OrthoProjMat4);
     }
 }
