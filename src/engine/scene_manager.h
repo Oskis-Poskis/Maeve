@@ -5,35 +5,14 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
-namespace SceneManager
+namespace SM
 {
-    class Object
+    enum NodeType
     {
-        public:
-            Object(std::string Name, std::string MeshID);
-
-            void SetPosition(glm::vec3 Position);
-            void SetRotation(glm::vec3 Rotation);
-            void SetScale(glm::vec3 Scale);
-            void SetName(std::string Name);
-            void RecalculateMat4();
-            
-            glm::vec3   GetPosition();
-            glm::vec3   GetRotation();
-            glm::vec3   GetScale();
-            std::string GetName();
-            std::string GetMeshID();
-            glm::mat4   &GetModelMatrix();
-
-        private:
-            glm::vec3 _position;
-            glm::vec3 _rotation;
-            glm::vec3 _scale;
-            glm::mat4 _modelMatrix;
-
-            std::string _name;
-            std::string _meshID;
+        Object_,
+        Light_
     };
 
     enum LightType
@@ -44,7 +23,55 @@ namespace SceneManager
         Directional
     };
 
-    class Light
+    class SceneNode
+    {
+        public:
+            virtual ~SceneNode() = default;
+
+            virtual void SetName(std::string Name) = 0;
+            virtual std::string GetName() = 0;
+
+            virtual void SetPosition(glm::vec3 Position) = 0;
+            virtual glm::vec3 GetPosition() = 0;
+
+            virtual NodeType GetType() = 0;
+    };
+
+    class Object : public SceneNode
+    {
+        public:
+            Object(std::string Name, std::string MeshID);
+
+            void SetPosition(glm::vec3 Position);
+            void SetRotationEuler(glm::vec3 Rotation);
+            void SetRotationQuat(glm::quat Rotation);
+            void Rotate(glm::vec3 Rotation);
+            void SetScale(glm::vec3 Scale);
+            void SetName(std::string Name);
+            void RecalculateMat4();
+            
+            glm::vec3   GetPosition();
+            glm::vec3   GetRotationEuler();
+            glm::quat   GetRotationQuat();
+            glm::vec3   GetScale();
+            std::string GetName();
+            std::string GetMeshID();
+            glm::mat4   &GetModelMatrix();
+            NodeType GetType();
+
+        private:
+            glm::vec3 _position;
+            glm::vec3 _scale;
+            glm::vec3 _rotationEuler;
+            glm::quat _rotationQuat;
+            glm::mat4 _modelMatrix;
+
+            std::string _name;
+            std::string _meshID;
+            NodeType _nodeType = NodeType::Object_;
+    };
+
+    class Light : public SceneNode
     {
         public:
             Light(std::string Name, LightType Type);
@@ -56,12 +83,14 @@ namespace SceneManager
 
             void SetIntensity(float Intensity);
             void SetRadius(float Radius);
+            float GetIntensity();
 
             void SetName(std::string Name);
 
             glm::vec3 GetPosition();
             glm::vec3 GetColor();
-            float     GetIntensity();
+            std::string GetName();
+            NodeType GetType();
 
         private:
             glm::vec3 _position;
@@ -71,22 +100,25 @@ namespace SceneManager
             
             std::string _name;
             LightType   _type;
+            NodeType _nodeType = NodeType::Light_;
     };
-
-    void DrawLights();
     
     void RenderAll();
     void CalculateObjectsTriCount();
-    void AddObject(Object Object);
-    void AddLight(Light Light);
+    void AddNode(Object* Object);
+    void AddNode(Light* Object);
+    Object* GetObjectFromNode(SceneNode* node);
+    Light* GetLightFromNode(SceneNode* node);
 
     void Initialize();
 
-    void SelectObject(int Index);
+    void SelectSceneType(int Index);
     int  GetSelectedIndex();
 
-    inline std::vector<Light>  Lights;
-    inline std::vector<Object> Objects;
-    inline std::vector<std::string> ObjectNames;
+    inline std::vector<SceneNode*> SceneNodes;
+    inline std::vector<std::string> SceneNodeNames;
+
     inline int ObjectsTriCount;
+    inline int NumObjects;
+    inline int NumLights;
 };

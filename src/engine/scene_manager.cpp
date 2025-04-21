@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -8,32 +10,41 @@
 #include "../common/camera.h"
 #include "../common/qk.h"
 
-#include <iostream>
-
-namespace SceneManager
+namespace SM
 {
     int _selectedObject;
+
+    void DrawLights();
+    void DrawOrigin();
 
     void Initialize()
     {
         Engine::RegisterEditorDraw3DFunction(DrawLights);
+        Engine::RegisterEditorDraw3DFunction(DrawOrigin);
     }
 
-    void AddObject(Object Object)
+    void AddNode(Object* Object)
     {
-        Objects.push_back(Object);
-        ObjectNames.push_back(Object.GetName());
+        SceneNodes.push_back(Object);
+        SceneNodeNames.push_back(Object->GetName());
         CalculateObjectsTriCount();
+
+        NumObjects++;
+        printf("Added object \"%s\" with mesh \"%s\"\n", Object->GetName().c_str(), Object->GetMeshID().c_str());
     }
 
-    void AddLight(Light Light)
+    void AddNode(Light* Light)
     {
-        Lights.push_back(Light);
+        SceneNodes.push_back(Light);
+        SceneNodeNames.push_back(Light->GetName());
+
+        NumLights++;
+        printf("Added light \"%s\"\n", Light->GetName().c_str());
     }
 
-    void SelectObject(int Index)
+    void SelectSceneType(int Index)
     {
-        _selectedObject = glm::min(Index, (int)Objects.size() - 1);
+        _selectedObject = glm::min(Index, (int)SceneNodes.size() - 1);
     }
 
     int GetSelectedIndex()
@@ -43,46 +54,78 @@ namespace SceneManager
 
     void RenderAll()
     {
-        AssetManager::S_GBuffers->Use();
-        AssetManager::S_GBuffers->SetMatrix4("projection", AssetManager::ProjMat4);
-        AssetManager::S_GBuffers->SetMatrix4("view", AssetManager::ViewMat4);
+        AM::S_GBuffers->Use();
+        AM::S_GBuffers->SetMatrix4("projection", AM::ProjMat4);
+        AM::S_GBuffers->SetMatrix4("view", AM::ViewMat4);
 
-        for (auto const& mesh : AssetManager::Meshes)
+        for (auto const& mesh : AM::Meshes)
         {
             int numElements = mesh.second.TriangleCount * 3;
             glBindVertexArray(mesh.second.VAO);
 
             // todo -> unordered map with key as material names, value is list of objects with that material
             int index = 0;
-            for (auto &obj : SceneManager::Objects)
+            for (auto &node : SM::SceneNodes)
             {
-                if (obj.GetMeshID() == mesh.first)
+                if (node->GetType() == NodeType::Object_)
                 {
-                    AssetManager::S_GBuffers->SetMatrix4("model", obj.GetModelMatrix());
-                    if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
-                    else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
+                    Object* object = dynamic_cast<Object*>(node);
+                    if (object->GetMeshID() == mesh.first)
+                    {
+                        AM::S_GBuffers->SetMatrix4("model", object->GetModelMatrix());
+                        if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
+                        else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
+                    }
+                    index++;
                 }
-                index++;
             }
         }
     }
 
+    Object* GetObjectFromNode(SceneNode* node)
+    {
+        if (auto object = dynamic_cast<Object*>(node)) {
+            return object;
+        }
+        return nullptr;
+    }
+
+    Light* GetLightFromNode(SceneNode* node)
+    {
+        if (auto light = dynamic_cast<Light*>(node)) {
+            return light;
+        }
+        return nullptr;
+    }
+
     void DrawLights()
     {
-        for (auto &light : SceneManager::Lights)
+        for (auto &node : SM::SceneNodes)
         {
-            qk::DrawScreenAlignedPlane(light.GetPosition(), glm::vec3(0.15f), light.GetColor());
+            if (node->GetType() == NodeType::Light_)
+            {
+                SM::Light* light = dynamic_cast<SM::Light*>(node);   
+                qk::DrawScreenAlignedPlane(light->GetPosition(), 0.125f, 1.0f, light->GetColor());
+            }
         }
+    }
+
+    void DrawOrigin()
+    {
+        glDisable(GL_DEPTH_TEST);
+        qk::DrawScreenAlignedPlane(SceneNodes[GetSelectedIndex()]->GetPosition(), 0.025f, 1.0f, qk::HexToRGB(0xff9f2c));
+        glEnable(GL_DEPTH_TEST);
     }
 
     Object::Object(std::string Name, std::string MeshID)
     {
-        _name        = Name;
-        _position    = glm::vec3(0.0f);
-        _rotation    = glm::vec3(0.0f);
-        _scale       = glm::vec3(1.0f);
-        _modelMatrix = glm::mat4(1.0f);
-        _meshID      = MeshID;
+        _name          = Name;
+        _position      = glm::vec3(0.0f);
+        _scale         = glm::vec3(1.0f);
+        _rotationEuler = glm::vec3(0.0f);
+        _rotationQuat  = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        _modelMatrix   = glm::mat4(1.0f);
+        _meshID        = MeshID;
 
         RecalculateMat4();
     }
@@ -93,9 +136,26 @@ namespace SceneManager
         RecalculateMat4();
     }
 
-    void Object::SetRotation(glm::vec3 Rotation)
+    void Object::SetRotationEuler(glm::vec3 Rotation)
     {
-        _rotation = Rotation;
+        _rotationEuler = Rotation;
+        _rotationQuat  = glm::quat(glm::radians(_rotationEuler));
+        RecalculateMat4();
+    }
+
+    void Object::SetRotationQuat(glm::quat Rotation)
+    {
+        _rotationQuat  = Rotation;
+        _rotationEuler = glm::degrees(glm::eulerAngles(_rotationQuat));
+        RecalculateMat4();
+    }
+
+    void Object::Rotate(glm::vec3 Rotation)
+    {
+        glm::quat deltaQuat = glm::quat(glm::radians(Rotation));
+        _rotationQuat = deltaQuat * _rotationQuat;
+        _rotationEuler = glm::degrees(glm::eulerAngles(_rotationQuat));
+
         RecalculateMat4();
     }
 
@@ -109,13 +169,13 @@ namespace SceneManager
     {
         glm::mat4 identity(1.0f);
 
-        _modelMatrix = glm::scale(identity, _scale);
+        _modelMatrix = glm::translate(identity, _position);
+        _modelMatrix *= glm::mat4_cast(_rotationQuat);
+        _modelMatrix = glm::scale(_modelMatrix, _scale);
 
-        _modelMatrix = glm::translate(_modelMatrix, _position);
-
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-        _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+        // _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotationEuler.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        // _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotationEuler.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        // _modelMatrix = glm::rotate(_modelMatrix, glm::radians(_rotationEuler.z), glm::vec3(0.0f, 0.0f, 1.0f));
     }
 
     void Object::SetName(std::string Name)
@@ -128,9 +188,9 @@ namespace SceneManager
         return _position;
     }
 
-    glm::vec3 Object::GetRotation()
+    glm::vec3 Object::GetRotationEuler()
     {
-        return _rotation;
+        return _rotationEuler;
     }
 
     glm::vec3 Object::GetScale()
@@ -153,12 +213,18 @@ namespace SceneManager
         return _modelMatrix;
     }
 
+    NodeType Object::GetType()
+    {
+        return _nodeType;
+    }
+
     void CalculateObjectsTriCount()
     {
         int numtris = 0;
-        for (int i = 0; i < SceneManager::Objects.size(); i++)
+        for (size_t i = 0; i < SceneNodes.size(); i++)
         {
-            numtris += AssetManager::Meshes.at(SceneManager::Objects[i].GetMeshID()).TriangleCount;
+            Object* object = dynamic_cast<Object*>(SceneNodes[i]);
+            if (object) numtris += AM::Meshes.at(object->GetMeshID()).TriangleCount;
         }
 
         ObjectsTriCount = numtris;   
@@ -206,6 +272,11 @@ namespace SceneManager
         _radius = Radius;
     }
 
+    void Light::SetName(std::string Name)
+    {
+        _name = Name;
+    }
+
     glm::vec3 Light::GetPosition()
     {
         return _position;
@@ -214,6 +285,16 @@ namespace SceneManager
     glm::vec3 Light::GetColor()
     {
         return _color;
+    }
+
+    std::string Light::GetName()
+    {
+        return _name;
+    }
+
+    NodeType Light::GetType()
+    {
+        return _nodeType;
     }
 
     float Light::GetIntensity()
