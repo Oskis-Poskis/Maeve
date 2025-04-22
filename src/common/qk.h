@@ -29,17 +29,19 @@ namespace qk
 
     glm::vec3 GetBasisVectorFromMatrix(int X_Y_Or_Z, glm::mat4 modelMatrix);
     glm::vec2 WorldToScreen(glm::vec3 worldPosition);
+    glm::vec3 ScreenToWorld(glm::vec2 screenPos, float depth);
 
     void DrawBVHCube(glm::vec3 min, glm::vec3 max, glm::mat4 parentMatrix, glm::vec3 color = glm::vec3(1.0f), int lineWidth = 2);
 
     void DrawDebugCube(glm::vec3 pos, glm::vec3 scale, glm::vec3 color = glm::vec3(1.0f), bool wireframe = false, int lineWidth = 2);
     void DrawDebugCubeMatrix(glm::mat4 matrix, glm::vec3 color = glm::vec3(1.0f), bool wireframe = false, int lineWidth = 2);
     void DrawLine(glm::vec3 p1, glm::vec3 p2, glm::vec3 color = glm::vec3(1.0f), int lineWidth = 2);
+    void DrawTri(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 color = glm::vec3(1.0f));
 
     void DrawScreenAlignedPlane(glm::vec3 pos, float scale, float maxScaleFactor, glm::vec3 color = glm::vec3(1.0f));
 
     void Todo(std::string message);
 
     void  StartTimer();
-    float StopTimer();
+    double StopTimer();
 }

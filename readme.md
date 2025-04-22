@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Maeve
 Custom game engine hobby project
 
@@ -14,3 +15,18 @@ Linux requires libglm-dev, libglfw-dev, libfreetype6-dev and glad
 ![](Doc/Scene-manager.png)
 * Viewport transformations (WIP)
 ![](Doc/Transformations.png)
+=======
+# Maeve
+Custom game engine hobby project
+
+Makefile is made for linux and uses shared libraries, won't work on windows yet
+### Features
+* Deferred phong shading (position reconstruction from depth) & OBJ file parsing
+![](Doc/Viewport.png)
+![](Doc/DeferredShading.png)
+* Text rendering and custom UI interface
+![](Doc/UI-Menu.png)
+![](Doc/Scene-manager.png)
+* Viewport transformations (WIP)
+![](Doc/Transformations.png)
+>>>>>>> fb38fb1 (Init)

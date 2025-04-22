@@ -14,7 +14,6 @@ using namespace std::chrono;
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-// #include <c++/11/bits/stl_numeric.h>
 
 namespace AM
 {
@@ -26,9 +25,9 @@ namespace AM
         Engine::RegisterEditorFunction([&]() { EditorCam.Update(); });
         Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
 
+        AddMeshByData(AM::Presets::CubeOutlineVtxData, AM::Presets::CubeOutlineIndices, "MV::CUBEOUTLINE");
         AddMeshByData(AM::Presets::PlaneVtxData, AM::Presets::PlaneIndices, "plane");
         AddMeshByData(AM::Presets::CubeVtxData, AM::Presets::CubeIndices, "cube");
-        AddMeshByData(AM::Presets::CubeOutlineVtxData, AM::Presets::CubeOutlineIndices, "cube_outline");
         AddMeshByData(std::vector<VtxData> {}, "empty");
         
         S_GBuffers     = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
@@ -69,9 +68,9 @@ namespace AM
         vertexData = VertexData;
         indices    = Indices;
 
-        // qk::StartTimer();
-        // bvh.Build(VertexData);
-        // std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
+        qk::StartTimer();
+        bvh.Build(VertexData);
+        std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
     }
 
     Mesh::Mesh(const std::vector<VtxData> &VertexData)
@@ -163,9 +162,21 @@ namespace AM
         aabb.max = glm::vec3(-FLT_MAX);
 
         for (unsigned int i = start; i < start + count; i++) {
-            glm::vec3 c = triIndices[i].GetCenter(vertices);
-            aabb.min = glm::min(aabb.min, c);
-            aabb.max = glm::max(aabb.max, c);
+            // glm::vec3 c = triIndices[i].GetCenter(vertices);
+            // aabb.min = glm::min(aabb.min, c);
+            // aabb.max = glm::max(aabb.max, c);
+
+            glm::vec3 c;
+            Tri tri = triIndices[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (j == 0) c = vertices[tri.id0].Position;
+                if (j == 1) c = vertices[tri.id1].Position;
+                if (j == 2) c = vertices[tri.id2].Position;
+
+                aabb.min = glm::min(aabb.min, c);
+                aabb.max = glm::max(aabb.max, c);
+            }
         }
 
         return aabb;
@@ -192,48 +203,58 @@ namespace AM
         return 2;                                                 // Z axis
     }
 
-    bool Ray::IntersectAABB(const AABB& aabb, float tMin, float tMax)
+    bool Ray::IntersectAABB(const AABB& aabb, float& tMin, float& tMax) const
     {
         for (int i = 0; i < 3; ++i)
         {
             float invD = 1.0f / direction[i];
             float t0 = (aabb.min[i] - origin[i]) * invD;
             float t1 = (aabb.max[i] - origin[i]) * invD;
-    
+
             if (invD < 0.0f)
                 std::swap(t0, t1);
-    
+
             tMin = std::max(tMin, t0);
             tMax = std::min(tMax, t1);
-    
-            if (tMax <= tMin)
-                return false;
+
+            if (tMax < tMin) return false; // No intersection
         }
-        return true;
+
+        return true; // Intersection occurred
     }
 
-    bool Ray::IntersectTri(const Tri &tri, const std::vector<VtxData>& vertices)
+    bool Ray::IntersectTri(const Tri& tri, const std::vector<VtxData>& vertices, float& outT) const
     {
-        
+        glm::vec3 v0 = vertices[tri.id0].Position;
+        glm::vec3 v1 = vertices[tri.id1].Position;
+        glm::vec3 v2 = vertices[tri.id2].Position;
+
+        glm::vec3 edge1 = v1 - v0;
+        glm::vec3 edge2 = v2 - v0;
+        glm::vec3 h = glm::cross(direction, edge2);
+        float a = glm::dot(edge1, h);
+
+        const float epsilon = 1e-6f;
+        if (fabs(a) < epsilon) return false;
+
+        float f = 1.0f / a;
+        glm::vec3 s = origin - v0;
+        float u = f * glm::dot(s, h);
+        if (u < 0.0f || u > 1.0f) return false;
+
+        glm::vec3 q = glm::cross(s, edge1);
+        float v = f * glm::dot(direction, q);
+        if (v < 0.0f || (u + v) > 1.0f) return false;
+
+        float t = f * glm::dot(edge2, q);
+        if (t > epsilon) {
+            outT = t;
+            return true;
+        }
+
+        return false;
     }
 
-    // void IntersectTri(Ray& ray, const Tri& tri)
-    // {
-    //     glm::vec3 edge1 = tri.vertex1 - tri.vertex0;
-    //     glm::vec3 edge2 = tri.vertex2 - tri.vertex0;
-    //     glm::vec3 h = cross( ray.D, edge2 );
-    //     const float a = dot( edge1, h );
-    //     if (a > -0.0001f && a < 0.0001f) return; // ray parallel to triangle
-    //     const float f = 1 / a;
-    //     glm::vec3 s = ray.O - tri.vertex0;
-    //     const float u = f * dot( s, h );
-    //     if (u < 0 || u > 1) return;
-    //     glm::vec3 q = cross( s, edge1 );
-    //     const float v = f * dot( ray.D, q );
-    //     if (v < 0 || u + v > 1) return;
-    //     const float t = f * dot( edge2, q );
-    //     if (t > 0.0001f) ray.t = min( ray.t, t );
-    // }
 
     void BVH::Build(const std::vector<VtxData>& vertices)
     {
@@ -241,7 +262,7 @@ namespace AM
         triIndices.clear();
 
         triIndices.resize(vertices.size() / 3);
-        for (unsigned int i = 0; i < vertices.size() / 3; i += 3) {
+        for (unsigned int i = 0; i < triIndices.size(); i++) {
             triIndices[i].id0 = i * 3 + 0;
             triIndices[i].id1 = i * 3 + 1;
             triIndices[i].id2 = i * 3 + 2;
@@ -268,12 +289,22 @@ namespace AM
         }
 
         int splitAxis = AABB::getLongestAxis(node.aabb);
-        
         unsigned int mid = start + count / 2;
-        std::nth_element(triIndices.begin() + start, triIndices.begin() + mid, triIndices.begin() + start + count,
+
+        // 0.209s for 62.976 tris (debug)
+        std::nth_element(
+            triIndices.begin() + start,
+            triIndices.begin() + mid,
+            triIndices.begin() + start + count,
             [&](const Tri& a, const Tri& b) {
                 return a.GetCenter(vertices)[splitAxis] < b.GetCenter(vertices)[splitAxis];
             });
+
+        // 0.588s for 62.976 tris (debug)
+        // std::sort(triIndices.begin() + start, triIndices.begin() + start + count,
+        //     [&](const Tri& a, const Tri& b) {
+        //         return a.GetCenter(vertices)[splitAxis] < b.GetCenter(vertices)[splitAxis];
+        //     });
 
         unsigned int left  = build_recursive(vertices, start, mid - start);
         unsigned int right = build_recursive(vertices, mid,   count - (mid - start));
@@ -293,7 +324,7 @@ namespace AM
         if (node.isLeaf) return;
         
         if (curDepth <= maxDepth && curDepth >= minDepth) {
-            float hue = (float)(curDepth - minDepth) / (maxDepth - minDepth) * 90.0f;
+            float hue = 90.0f - (float)(curDepth - minDepth) / (maxDepth - minDepth) * 90.0f;
             glm::vec3 color = qk::HSVToRGB({ hue, 1.0f, 1.0f });
             qk::DrawBVHCube(node.aabb.min, node.aabb.max, parentMatrix, color);
         }
@@ -304,32 +335,56 @@ namespace AM
         }
     }
 
-    void BVH::TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices)
+    void BVH::TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices, ClosestHit& closestHit, ClosestHit& closestHitAABB)
     {
         const BVH_Node& node = bvhNodes[nodeIdx];
 
-        if (node.isLeaf) {
-            if (node.count == 1) {
-                for (unsigned int i = 0; i < node.count; i += 3) {
-                    glm::vec3 v0 = vertices[triIndices[node.start + i + 0].id0].Position;
-                    glm::vec3 v1 = vertices[triIndices[node.start + i + 1].id1].Position;
-                    glm::vec3 v2 = vertices[triIndices[node.start + i + 2].id2].Position;
+        float tMin = ray.minDistance;
+        float tMax = ray.maxDistance;
+        float aabbTMin = tMin;
+        float aabbTMax = tMax;
 
-                    qk::DrawLine(v0, v1, { 0.0f, 1.0f, 0.0f });
-                    qk::DrawLine(v1, v2, { 0.0f, 1.0f, 0.0f });
-                    qk::DrawLine(v2, v0, { 0.0f, 1.0f, 0.0f });
+        if (!ray.IntersectAABB(node.aabb, aabbTMin, aabbTMax))
+            return;
+
+        // Track closest AABB hit
+        if (aabbTMin < closestHitAABB.t) {
+            closestHitAABB.t = aabbTMin;
+            closestHitAABB.hit = true;
+            closestHitAABB.v0 = node.aabb.min;
+            closestHitAABB.v1 = node.aabb.max;
+            closestHitAABB.v2 = glm::vec3(0.0f); // optional, unused for AABB
+        }
+
+        if (node.isLeaf) {
+            for (unsigned int i = 0; i < node.count; i++) {
+                Tri tri(triIndices[node.start + i].id0,
+                        triIndices[node.start + i].id1,
+                        triIndices[node.start + i].id2);
+
+                float t = 0.0f;
+                if (ray.IntersectTri(tri, vertices, t) && t < closestHit.t) {
+                    closestHit.t = t;
+                    closestHit.v0 = vertices[tri.id0].Position;
+                    closestHit.v1 = vertices[tri.id1].Position;
+                    closestHit.v2 = vertices[tri.id2].Position;
+                    closestHit.n0 = vertices[tri.id0].Normal;
+                    closestHit.n1 = vertices[tri.id1].Normal;
+                    closestHit.n2 = vertices[tri.id2].Normal;
+                    closestHit.hit = true;
                 }
             }
-
             return;
         }
 
-        if (!ray.IntersectAABB(node.aabb)) return;
+        // glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
+        // qk::DrawBVHCube(node.aabb.min, node.aabb.max, glm::mat4(1.0f), color);
 
-        glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-        qk::DrawBVHCube(node.aabb.min, node.aabb.max, glm::mat4(1.0f), color);
-
-        if (node.leftChild != UINT32_MAX)  TraverseBVH_Ray(node.leftChild,  ray, vertices);
-        if (node.rightChild != UINT32_MAX) TraverseBVH_Ray(node.rightChild, ray, vertices);
+        // Recurse left and right only if valid
+        if (node.leftChild != UINT32_MAX)
+            TraverseBVH_Ray(node.leftChild, ray, vertices, closestHit, closestHitAABB);
+        if (node.rightChild != UINT32_MAX)
+            TraverseBVH_Ray(node.rightChild, ray, vertices, closestHit, closestHitAABB);
     }
+
 }

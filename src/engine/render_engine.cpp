@@ -17,6 +17,7 @@
 #include "../common/qk.h"
 #include "../ui/ui.h"
 #include "../ui/text_renderer.h"
+#include <iomanip>
 
 namespace Engine
 {
@@ -181,21 +182,48 @@ namespace Engine
         if (inGame && Input::KeyPressed(GLFW_KEY_RIGHT)) minDepth++;
 
         SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
-        /* if (node->GetType() == SM::NodeType::Object_) {
+        if (node->GetType() == SM::NodeType::Object_) {
             SM::Object* obj  = SM::GetObjectFromNode(node);
             AM::Mesh&   mesh = AM::Meshes.at(obj->GetMeshID());
             AM::BVH&    bvh  = mesh.bvh;
 
             // bvh.DrawBVH(bvh.rootIdx, 0, minDepth, maxDepth, obj->GetModelMatrix());
 
-            AM::Ray ray(AM::EditorCam.Position - glm::vec3(0.0f, 0.0f, 0.1f), AM::EditorCam.Front);
+            glm::vec2 mousePos    = glm::vec2(Input::GetMouseX(), Input::GetMouseY());
+            glm::vec3 nearPoint   = qk::ScreenToWorld(mousePos, 0.0f);
+            glm::vec3 farPoint    = qk::ScreenToWorld(mousePos, 1.0f);
+            
+            glm::vec3 worldDir = glm::normalize(farPoint - nearPoint);
+            glm::vec3 worldOrigin = nearPoint;
 
-            qk::StartTimer();
-            bvh.TraverseBVH_Ray(bvh.rootIdx, ray, mesh.vertexData);
-            std::cout << "[:] Traverse bvh in " << qk::StopTimer() << " seconds\n";
+            // Transform ray to object space
+            glm::mat4 modelInv = glm::inverse(obj->GetModelMatrix());
+            glm::vec3 objOrigin = glm::vec3(modelInv * glm::vec4(worldOrigin, 1.0f));
+            glm::vec3 objDir    = glm::vec3(modelInv * glm::vec4(worldDir, 0.0f));
+            AM::Ray ray(objOrigin, objDir);
 
-            qk::DrawLine(ray.origin, ray.origin + ray.direction * 25.0f);
-        } */
+            AM::ClosestHit closestTri;
+            AM::ClosestHit closestAABB;
+            bvh.TraverseBVH_Ray(bvh.rootIdx, ray, mesh.vertexData, closestTri, closestAABB);
+
+            if (closestTri.hit) {
+                glm::vec3 v0 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v0, 1.0f));
+                glm::vec3 v1 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v1, 1.0f));
+                glm::vec3 v2 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v2, 1.0f));
+
+                qk::DrawLine(v0, v1, {0.0f, 1.0f, 0.0f}, 4);
+                qk::DrawLine(v1, v2, {0.0f, 1.0f, 0.0f}, 4);
+                qk::DrawLine(v2, v0, {0.0f, 1.0f, 0.0f}, 4);
+
+                qk::DrawTri(v0, v1, v2, {0.0f, 0.0f, 1.0f});
+
+                // qk::DrawLine(closestTri.v0, closestTri.v0 + closestTri.n0 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
+                // qk::DrawLine(closestTri.v1, closestTri.v1 + closestTri.n1 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
+                // qk::DrawLine(closestTri.v2, closestTri.v2 + closestTri.n2 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
+            }
+
+            qk::DrawLine(worldOrigin, worldOrigin + worldDir * 10.0f);
+        }
 
 
         // Display -----------------------------------

@@ -176,6 +176,7 @@ namespace Manipulation
                 SM::Object* object = dynamic_cast<SM::Object*>(node);
                 if (Input::KeyPressed(GLFW_KEY_R)) object->SetRotationEuler({});
                 if (Input::KeyPressed(GLFW_KEY_G)) object->SetPosition({});
+                if (Input::KeyPressed(GLFW_KEY_T)) object->SetScale(glm::vec3(1.0f));
             }
             if (Input::KeyPressed(GLFW_KEY_G) && !AM::EditorCam.Moving && !AM::EditorCam.Turning)
             {
@@ -265,10 +266,10 @@ namespace Manipulation
 
                 if (axisCount == 3) angle = startAngle - glm::degrees(std::atan2f(neutral.x, neutral.y));
                 else {
-                    // Move cursor if its reaching top
+                    // Move cursor if its reaching right edge
                     if (Input::GetMouseX() >= (float)Engine::GetWindowSize().x - 5)
                         glfwSetCursorPos(Engine::WindowPtr(), 10, Input::GetMouseY());
-                    // Move cursor if its at the bottom
+                    // Move cursor if its at the left
                     else if (Input::GetMouseX() <= 5)
                         glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
 

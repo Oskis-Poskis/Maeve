@@ -61,8 +61,15 @@ namespace AM
         float minDistance = 0.0f;
         float maxDistance = FLT_MAX;
 
-        bool IntersectAABB(const AABB& aabb, float tMin = 0.0f, float tMax = FLT_MAX);
-        bool IntersectTri(const Tri& tri, const std::vector<VtxData>& vertices);
+        bool IntersectAABB(const AABB& aabb, float& tMin, float& tMax) const;
+        bool IntersectTri(const Tri& tri, const std::vector<VtxData>& vertices, float& out) const;
+    };
+
+    struct ClosestHit {
+        bool hit = false;
+        float t = FLT_MAX;
+        glm::vec3 v0, v1, v2;
+        glm::vec3 n0, n1, n2;
     };
 
     struct BVH_Node
@@ -84,7 +91,7 @@ namespace AM
 
             void Build(const std::vector<VtxData>& vertices);
             void DrawBVH(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix);
-            void TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices);
+            void TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices, ClosestHit& closestHit, ClosestHit& closestHitAABB);
 
         private:
             unsigned int build_recursive(const std::vector<VtxData>& vertices, unsigned int start, unsigned int count);

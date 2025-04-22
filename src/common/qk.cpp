@@ -14,6 +14,7 @@ namespace fs = std::filesystem;
 namespace qk
 {
     unsigned int line_vao, line_vbo;
+    unsigned int tri_vao,  tri_vbo;
     void Initialize()
     {
         glGenVertexArrays(1, &line_vao);
@@ -21,7 +22,17 @@ namespace qk
 
         glBindVertexArray(line_vao);
         glBindBuffer(GL_ARRAY_BUFFER, line_vbo);
-        glBufferData(GL_ARRAY_BUFFER, 3 * 2 * sizeof(float), nullptr, GL_DYNAMIC_DRAW); // 2 points, 2 floats each
+        glBufferData(GL_ARRAY_BUFFER, 3 * 2 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glGenVertexArrays(1, &tri_vao);
+        glGenBuffers(1, &tri_vbo);
+
+        glBindVertexArray(tri_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, tri_vbo);
+        glBufferData(GL_ARRAY_BUFFER, 3 * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
         glEnableVertexAttribArray(0);
@@ -167,6 +178,17 @@ namespace qk
         return glm::vec2(screenPos.x, screenPos.y); 
     }
 
+    glm::vec3 ScreenToWorld(glm::vec2 screenPos, float depth)
+    {
+        float w = Engine::GetWindowSize().x;
+        float h = Engine::GetWindowSize().y;
+
+        glm::vec4 viewport = {0, 0, w, h};
+
+        glm::vec3 screenSpace = glm::vec3(screenPos.x, h - screenPos.y, depth);
+        return glm::unProject(screenSpace, AM::ViewMat4, AM::ProjMat4, viewport);
+    }
+
     void DrawBVHCube(glm::vec3 min, glm::vec3 max, const glm::mat4 parentMatrix, glm::vec3 color, int lineWidth)
     {
         glm::vec3 pos = glm::vec3(
@@ -195,7 +217,7 @@ namespace qk
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glLineWidth(lineWidth);
 
-        glBindVertexArray(AM::Meshes.at("cube_outline").VAO);
+        glBindVertexArray(AM::Meshes.at("MV::CUBEOUTLINE").VAO);
         glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -255,16 +277,44 @@ namespace qk
         AM::S_SingleColor->SetMatrix4("model",      model);
         AM::S_SingleColor->SetVector3("color",      color);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glLineWidth(lineWidth);
-
         glBindVertexArray(line_vao);
         glBindBuffer(GL_ARRAY_BUFFER, line_vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); // update the 2 points
 
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glLineWidth(lineWidth);
+        glDisable(GL_DEPTH_TEST);
+
         glDrawArrays(GL_LINES, 0, 2);
 
+        glEnable(GL_DEPTH_TEST);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    void DrawTri(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 color)
+    {
+        float vertices[] = { p1.x, p1.y, p1.z,
+                             p2.x, p2.y, p2.z,
+                             p3.x, p3.y, p3.z };
+
+        glm::mat4 model = glm::mat4(1.0);
+
+        AM::S_SingleColor->Use();
+        AM::S_SingleColor->SetMatrix4("projection", AM::ProjMat4);
+        AM::S_SingleColor->SetMatrix4("view",       AM::ViewMat4);
+        AM::S_SingleColor->SetMatrix4("model",      model);
+        AM::S_SingleColor->SetVector3("color",      color);
+
+        glBindVertexArray(tri_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, tri_vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(-1.0f, -1.0f); // pull triangle closer to camera just slightly
+
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glDisable(GL_POLYGON_OFFSET_FILL);
     }
 
     void DrawScreenAlignedPlane(glm::vec3 pos, float scale, float maxScaleFactor, glm::vec3 color)
@@ -299,10 +349,10 @@ namespace qk
         start = high_resolution_clock::now();
     }
 
-    float StopTimer()
+    double StopTimer()
     {
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start).count();
-        return (float)duration / 1000000;
+        return static_cast<double>(duration) / 1000000.0;
     }
 }

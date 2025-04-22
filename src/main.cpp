@@ -6,8 +6,9 @@ int main()
 {
     Engine::Initialize();
  
-    AM::IO::LoadObj("res/objs/suzanne_smooth.obj", "loaded1");
-    SM::Object obj("Loaded Model", "loaded1");
+    AM::IO::LoadObj("res/objs/suzanne_smooth.obj", "loaded_1");
+    SM::Object obj("Loaded OBJ", "loaded_1");
+    obj.Rotate({ 90.0f, 0.0f, 0.0f });
     SM::AddNode(&obj);
 
     /* int num = 5;
@@ -24,7 +25,7 @@ int main()
         SM::AddNode(myobj);
     } */
 
-    SM::Light light1("Point Light1", SM::LightType::Point, glm::vec3( 0, 0, 4.0f), 10.0f, glm::vec3(1, 1, 1), 5.0f);
+    SM::Light light1("Point Light1", SM::LightType::Point, glm::vec3( 0, 0, 2.5f), 10.0f, glm::vec3(1, 1, 1), 5.0f);
     SM::Light light2("Point Light2", SM::LightType::Point, glm::vec3(-7, 0, 2.5f), 10.0f, glm::vec3(0, 1, 1), 5.0f);
     SM::Light light3("Point Light3", SM::LightType::Point, glm::vec3( 7, 0, 2.5f), 10.0f, glm::vec3(1, 0, 0), 5.0f);
     SM::AddNode(&light1);
