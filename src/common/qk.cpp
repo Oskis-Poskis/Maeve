@@ -108,6 +108,31 @@ namespace qk
                            vec.y);
     }
 
+    float TextToFloat(std::string Text)
+    {
+        std::string NewString = Text;
+        if (NewString.size() == 0) NewString = "0.000";
+        else{
+            size_t dotPos = NewString.find('.');
+            if (dotPos == std::string::npos) NewString += ".000";
+            else {
+                size_t decimalCount = NewString.size() - dotPos - 1;
+                if (decimalCount < 3) NewString.append(3 - decimalCount, '0');
+            }
+        }
+
+        float result;
+        try {
+            result = std::stof(NewString);  // Convert string to float
+            result = std::round(result * 1000.0f) / 1000.0f;
+        } catch (const std::invalid_argument& e) {
+            return 0.000f;
+        } catch (const std::out_of_range& e) {
+            return 0.000f;
+        }
+        return result;
+    }
+
     std::random_device rd;
     std::mt19937 gen(rd());
     int RandomInt(int min, int max)

@@ -22,6 +22,8 @@ namespace qk
     std::string FormatVec(glm::ivec3 vec);
     std::string FormatVec(glm::ivec2 vec);
 
+    float TextToFloat(std::string Text);
+
     int RandomInt(int min, int max);
 
     // glm::ivec2 PixelToNDC();
@@ -45,7 +47,6 @@ namespace qk
 
     void  StartTimer();
     double StopTimer();
-
 
     inline unsigned int bvhVisSSBO;
     inline std::vector<glm::mat4> bvhVisMatrices;
