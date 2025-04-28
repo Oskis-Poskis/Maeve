@@ -76,7 +76,9 @@ namespace qk
 
     float MapRange(float Input, float InputMin, float InputMax, float OutputMin, float OutputMax)
     {
-        return OutputMin + ((OutputMax - OutputMin) / (InputMax - InputMin)) * (Input - InputMin);
+        float mappedValue = OutputMin + ((OutputMax - OutputMin) / (InputMax - InputMin)) * (Input - InputMin);
+
+        return glm::clamp(mappedValue, OutputMin, OutputMax);
     }
 
     std::string FormatVec(glm::vec3 vec, int decimals)
@@ -158,6 +160,42 @@ namespace qk
         return glm::vec3(r + m, g + m, b + m);        
     }
 
+    glm::vec3 RGBToHSV(const glm::vec3 &rgb)
+    {
+        float r = rgb.r;
+        float g = rgb.g;
+        float b = rgb.b;
+
+        float maxVal = glm::max(r, glm::max(g, b));
+        float minVal = glm::min(r, glm::min(g, b));
+        float delta = maxVal - minVal;
+
+        float h = 0.0f;
+        float s = 0.0f;
+        float v = maxVal;
+
+        // Calculate the hue
+        if (delta != 0)
+        {
+            if (maxVal == r)
+                h = 60.0f * fmodf((g - b) / delta, 6.0f);
+            else if (maxVal == g)
+                h = 60.0f * ((b - r) / delta + 2.0f);
+            else
+                h = 60.0f * ((r - g) / delta + 4.0f);
+        }
+
+        // Ensure hue is non-negative
+        if (h < 0.0f)
+            h += 360.0f;
+
+        // Calculate the saturation
+        if (maxVal != 0)
+            s = delta / maxVal;
+
+        return glm::vec3(h, s, v);
+    }
+
     glm::vec3 GetBasisVectorFromMatrix(int X_Y_Or_Z, glm::mat4 modelMatrix)
     {
         if (X_Y_Or_Z > 3) return {};
@@ -173,8 +211,13 @@ namespace qk
         glm::mat4 projectionMatrix = AM::ProjMat4; 
         glm::vec4 viewport = glm::vec4(0, 0, w, h); 
 
+        glm::mat4 viewProj = projectionMatrix * viewMatrix;
+        glm::vec4 clipSpacePos = viewProj * glm::vec4(worldPosition, 1.0f);
+        // behind or offscreen
+        if (clipSpacePos.w <= 0.0f) return glm::vec2(-10000.0f);
+
         glm::vec3 screenPos = glm::project(worldPosition, viewMatrix, projectionMatrix, viewport);
-        
+
         return glm::vec2(screenPos.x, screenPos.y); 
     }
 
@@ -189,19 +232,55 @@ namespace qk
         return glm::unProject(screenSpace, AM::ViewMat4, AM::ProjMat4, viewport);
     }
 
+    void PrepareBVHVis(const std::vector<AM::BVH_Node>& bvhNodes)
+    {
+        bvhVisMatrices.clear();
+        bvhVisMatrices.reserve(bvhNodes.size());
+
+        for (const auto& node : bvhNodes) {
+            glm::vec3 min = node.aabb.min;
+            glm::vec3 max = node.aabb.max;
+            glm::vec3 pos   = 0.5f * (min + max);
+            glm::vec3 scale = 0.5f * (max - min);
+    
+            glm::mat4 model = glm::mat4(1.0);
+            model = glm::translate(model, pos);
+            model = glm::scale(model, scale);
+
+            bvhVisMatrices.push_back(model);
+        }
+
+        glGenBuffers(1, &bvhVisSSBO);
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, bvhVisSSBO);
+        glBufferData(GL_SHADER_STORAGE_BUFFER,
+                     bvhVisMatrices.size() * sizeof(glm::mat4),
+                     bvhVisMatrices.data(),
+                     GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, bvhVisSSBO);
+    }
+
+    void DrawBVHCubesInstanced(const glm::mat4 parentMatrix, int lineWidth)
+    {
+        AM::S_BVHVisInstanced->Use();
+        AM::S_BVHVisInstanced->SetMatrix4("projection", AM::ProjMat4);
+        AM::S_BVHVisInstanced->SetMatrix4("view",       AM::ViewMat4);
+        AM::S_BVHVisInstanced->SetMatrix4("parent",     parentMatrix);
+        // AM::S_BVHVis->SetVector3("color",      glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glLineWidth(lineWidth);
+
+        glBindVertexArray(AM::Meshes.at("MV::CUBEOUTLINE").VAO);
+        glDrawElementsInstanced(GL_LINES, 24, GL_UNSIGNED_INT, 0, bvhVisMatrices.size());
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
     void DrawBVHCube(glm::vec3 min, glm::vec3 max, const glm::mat4 parentMatrix, glm::vec3 color, int lineWidth)
     {
-        glm::vec3 pos = glm::vec3(
-            (min.x + max.x) * 0.5f,
-            (min.y + max.y) * 0.5f,
-            (min.z + max.z) * 0.5f
-        );
-
-        glm::vec3 scale = glm::vec3(
-            max.x - min.x,
-            max.y - min.y,
-            max.z - min.z
-        ) * 0.5f;
+        glm::vec3 pos   = 0.5f * (min + max);
+        glm::vec3 scale = 0.5f * (max - min);
 
         glm::mat4 model = glm::mat4(1.0);
         model = glm::translate(model, pos);
