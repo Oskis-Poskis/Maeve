@@ -95,7 +95,7 @@ namespace Engine
             glfwSetFramebufferSizeCallback(window, windowResized);
             glfwSetWindowMaximizeCallback(window, windowMaximized);
 
-            // glfwSetWindowAttrib(window, GLFW_DECORATED, false);
+            glfwSetWindowAttrib(window, GLFW_DECORATED, false);
             glfwSwapInterval(1);
 
             // Center Window
@@ -160,7 +160,6 @@ namespace Engine
         }
 
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
-
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
         AM::ViewMat4 = AM::EditorCam.GetViewMatrix();
@@ -190,20 +189,6 @@ namespace Engine
         /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred) Deferred::VisualizeGBuffers();
         /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvent) { func(); }
         /* EDITOR ONLY */ UI::Render();
-
-        // if (node->GetType() == SM::NodeType::Object_) {
-        //     SM::Object* obj = SM::GetObjectFromNode(node);
-            
-        //     glDisable(GL_DEPTH_TEST);
-        //     glm::vec2 sp   = qk::WorldToScreen(obj->GetPosition());
-        //     int textHeight = Text::CalculateMaxTextAscent("Test", 0.5f);
-        //     int spacing    = 3;
-        //     int numNodes   = AM::Meshes.at(obj->GetMeshID()).bvh.bvhNodes.size();
-
-        //     Text::RenderCenteredBG("Mesh: " + obj->GetMeshID(), sp.x, sp.y - textHeight, 0.5f, glm::vec3(0.95f));
-        //     Text::RenderCenteredBG(std::format("BVH Nodes: {}", numNodes), sp.x, sp.y - textHeight * 2 - spacing, 0.5f, glm::vec3(0.95f));
-        //     glEnable(GL_DEPTH_TEST);
-        // }
 
         Stats::Count(glfwGetTime());
         Stats::DrawStats();
