@@ -9,12 +9,14 @@
 
 #include "ui.h"
 #include "text_renderer.h"
+#include "../common/qk.h"
 #include "../common/shader.h"
 #include "../common/input.h"
 #include "../common/stat_counter.h"
 #include "../engine/render_engine.h"
 #include "../engine/asset_manager.h"
 #include "../engine/scene_manager.h"
+#include "../engine/deferred/deffered_manager.h"
 
 namespace UI
 {
@@ -24,10 +26,10 @@ namespace UI
     void DrawList(int xoffset, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient = false);
     void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
 
-    std::unique_ptr<Shader> menuShader, defocusShader;
+    std::unique_ptr<Shader> rectShader, gradientRectShader, frostedRectShader, circleShader, defocusShader, colorWheelShader;
 
     unsigned int defocusVAO;
-    unsigned int menuVAO, menuVBO;
+    unsigned int rectVAO, rectVBO;
     std::array<int, 8> vertices;
 
     // ---- replace with config file? ----
@@ -87,30 +89,43 @@ namespace UI
     Menu* activemenu;
     Menu* toplevelmenu;
 
+    int slidingSliderID = -1;
+    int currentSliderID =  0;
+
+    int activeInputBoxID  = -1;
+
     void Eject()
     {
-        inMenu = false;    
+        if (inMenu) {
+            inMenu = false;
+            Input::SetInputContext(Input::Game);
+        }
     }
 
     void Render()
     {
-        glDisable(GL_DEPTH_TEST);
+        currentSliderID = 0;
 
         if (Input::KeyPressed(GLFW_KEY_TAB)) {
             inMenu = !inMenu;
             Input::SetInputContext(inMenu ? Input::Menu : Input::Game);
+            if (activemenu->Title == sceneManager.Title) sceneManager.SelectedSubMenu = SM::GetSelectedIndex(); 
         }
-        if (Input::KeyDown(GLFW_KEY_ESCAPE)) inMenu = false;
+        if (Input::KeyDown(GLFW_KEY_ESCAPE)) {
+            Eject();
+        }
 
         if (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) {
             // Scene manager
             if (Input::KeyPressed(GLFW_KEY_SPACE)) {
                 activemenu = mainMenu.SubMenus[0];
                 mainMenu.SelectedSubMenu = 0;
+                sceneManager.SelectedSubMenu = SM::GetSelectedIndex();
 
                 inMenu = true;
                 Input::SetInputContext(Input::Menu);
             }
+            // Asset Manager
             if (Input::KeyPressed(GLFW_KEY_A))
             {
                 activemenu = &assetManager;
@@ -120,23 +135,13 @@ namespace UI
                 Input::SetInputContext(Input::Menu);
             }
         }
-        // Asset manager
-        if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL)) {
-            if (Input::KeyPressed(GLFW_KEY_SPACE)) {
-                activemenu = mainMenu.SubMenus[1];
-                mainMenu.SelectedSubMenu = 1;
 
-                inMenu = true;
-                Input::SetInputContext(Input::Menu);
-            }
-        }
-
-        if (Input::KeyPressed(GLFW_KEY_PERIOD)) {
+        if (Input::KeyPressed(GLFW_KEY_PERIOD) && Input::GetInputContext() != Input::TextInput) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() + 0.2f);
             Resize(0, 0);
             RecalcMenuWidths(toplevelmenu);
         }
-        if (Input::KeyPressed(GLFW_KEY_COMMA)) {
+        if (Input::KeyPressed(GLFW_KEY_COMMA) && Input::GetInputContext() != Input::TextInput) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() - 0.2f);
             Resize(0, 0);
             RecalcMenuWidths(toplevelmenu);
@@ -150,7 +155,7 @@ namespace UI
             // }
             if (Input::KeyPressed(GLFW_KEY_G)) grabbingMenu = !grabbingMenu;
             if (grabbingMenu) {
-                if (Input::LeftMBDown()) grabbingMenu = false;
+                if (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1)) grabbingMenu = false;
                 centerX += Input::GetMouseDeltaX();
                 centerY += Input::GetMouseDeltaY();
             }
@@ -164,10 +169,10 @@ namespace UI
             glBindVertexArray(defocusVAO);
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
+            // DrawRectBlurred(Engine::GetWindowSize(), glm::ivec2(0));
+
             activemenu->Render();
         }
-
-        glEnable(GL_DEPTH_TEST);
     }
 
     float blend = 0;
@@ -176,8 +181,8 @@ namespace UI
     {
         Input(NumItems);
 
-        menuShader->Use();
-        menuShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        rectShader->Use();
+        rectShader->SetMatrix4("projection", AM::OrthoProjMat4);
 
         elapsed = glm::clamp(elapsed + Stats::GetDeltaTime() * animSpeed, 0.0f, 1.0f);
         blend = glm::smoothstep(0.0f, 1.0f, elapsed);
@@ -291,104 +296,155 @@ namespace UI
 
     void DrawList(int xoffset_, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient)
     {
+        int vis_below_above = 4;
         int xoffset = xoffset_ - (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
 
-        int vis_below_above = 4;
-
+        // Background
         if (submenu.BGopacity > 0.0f)
         {
-            // Header
-            if (submenu.HiearchyView)
+            if (submenu.HasHeaderBar)
             {
-                if (submenu.HasHeaderBar)
-                {
-                    DrawRect(glm::vec2(left_edge, top_edge + glm::min(vis_below_above * itemHeightPX, yoffset)),
-                             submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
-                }
+                float headerYOffset = submenu.HiearchyView ? glm::min(vis_below_above * itemHeightPX, yoffset) : yoffset;
+
+                DrawRect(glm::vec2(left_edge, top_edge + headerYOffset),
+                        submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
             }
-            else
-            {
-                if (submenu.HasHeaderBar)
-                {
-                    DrawRect(glm::vec2(left_edge, top_edge + yoffset),
-                             submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
-                }
-            }
-        }
-        
-        // Title
-        if (submenu.HiearchyView) {
-            Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
-                         top_edge - titleHeight + TitleBarPaddingYPX + glm::min(vis_below_above * itemHeightPX, yoffset), TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
-        }
-        else {
-            Text::Render(submenu.Title, centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
-                        top_edge - titleHeight + TitleBarPaddingYPX + yoffset, TitleBarTextScaling, glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
         }
 
+        // Frosted Background
+        if (submenu.FrostedBG)
+        {
+            glm::vec2 bottomLeft = { left_edge, top_edge - titleHeight - itemHeightPX * items.size() + yoffset };
+            glm::vec2 topRight   = { right_edge, top_edge + yoffset };
+
+            DrawRect(topRight + (float)OutlineWidth, bottomLeft - (float)OutlineWidth, OutlineColor);
+            DrawRectBlurred(topRight, bottomLeft, glm::vec3(0.6f));
+        }
+
+        // Title
+        {
+            float titleYOffset = submenu.HiearchyView ? glm::min(vis_below_above * itemHeightPX, yoffset) : yoffset;
+
+            Text::Render(submenu.Title,
+                        centerX - Text::CalculateTextWidth(submenu.Title, TitleBarTextScaling) / 2,
+                        top_edge - titleHeight + TitleBarPaddingYPX + titleYOffset,
+                        TitleBarTextScaling,
+                        glm::mix(glm::vec3(0.9), TitleBarTextColor, submenu.BGopacity));
+        }
+
+        // Items
+        int maxVisibleColumns = 7;
+        int selectedColumn = submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap;
+        int halfVisibleColumns = maxVisibleColumns / 2;
+
+        // Calculate min and max visible columns based on selection
+        int minVisibleColumn = selectedColumn - halfVisibleColumns;
+        int maxVisibleColumn = selectedColumn + halfVisibleColumns;
+
+        // Clamp to 0 to avoid negative indices
+        minVisibleColumn = glm::max(0, minVisibleColumn);
+
+        // Now in your loop:
         for (int i = 0; i < items.size(); i++)
         {
-            int xoffoffset = (i / submenu.MaxItemsUntilWrap) * submenu.MenuWidth + xoffset;
-            int yoffoffset = i % submenu.MaxItemsUntilWrap;
+            int column = i / submenu.MaxItemsUntilWrap;
+            int row    = i % submenu.MaxItemsUntilWrap;
 
+            // Only draw if inside visible columns
+            if (column < minVisibleColumn || column > maxVisibleColumn)
+                continue;
+
+            int xoff = column * submenu.MenuWidth + xoffset;
+            int yoff = row;
+
+            glm::vec2 itemPos = glm::vec2(left_edge + xoff, top_edge - titleHeight - itemHeightPX * yoff + yoffset);
+
+            float itemShade = 0.0f;
             if (submenu.BGopacity > 0.0f)
             {
-                float itemShade = 0.0f;
                 if (!gradient) itemShade = (i == submenu.SelectedSubMenu) ? 1.0f : ItemShadePct;
-                else
+                else if (i / submenu.MaxItemsUntilWrap == submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap)
                 {
-                    if (i / submenu.MaxItemsUntilWrap == submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap)
-                    {
-                        float distance = ((ItemDistanceShade - glm::abs(submenu.SelectedSubMenu - i)) / (float)ItemDistanceShade);
-                        itemShade = glm::pow(glm::pow(distance, 3), 1.0f / 2.2f);
-                    }
+                    float distance = (ItemDistanceShade - glm::abs(submenu.SelectedSubMenu - i)) / (float)ItemDistanceShade;
+                    itemShade = glm::pow(glm::pow(distance, 3.0f), 1.0f / 2.2f);
                 }
-                
+
                 if (submenu.HiearchyView)
                 {
-                    if (i <= submenu.SelectedSubMenu + vis_below_above && i >= submenu.SelectedSubMenu - vis_below_above)
+                    bool inRange = (i <= submenu.SelectedSubMenu + vis_below_above && i >= submenu.SelectedSubMenu - vis_below_above);
+                    if (inRange)
                     {
-                        DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
-                                submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
-                        if ((i == submenu.SelectedSubMenu + vis_below_above && submenu.SelectedSubMenu >= vis_below_above)) {
-                            Text::Render(std::to_string(items.size() - i) + "...", centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
-                                         top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, ItemTextInactive);
+                        DrawRect(itemPos, submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
+
+                        if (i == submenu.SelectedSubMenu + vis_below_above && submenu.SelectedSubMenu >= vis_below_above)
+                        {
+                            Text::Render(std::to_string(items.size() - i) + "...",
+                                        centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
+                                        top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
+                                        ItemTextScaling, ItemTextInactive);
                         }
-                        else if ((i == submenu.SelectedSubMenu - vis_below_above)) {
-                            Text::Render(std::to_string(i + 1) + "...", centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
-                                         top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, ItemTextInactive);
+                        else if (i == submenu.SelectedSubMenu - vis_below_above)
+                        {
+                            Text::Render(std::to_string(i + 1) + "...",
+                                        centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
+                                        top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
+                                        ItemTextScaling, ItemTextInactive);
                         }
                     }
                 }
-                else
-                {
-                    DrawRect(glm::vec2(left_edge + xoffoffset, top_edge - titleHeight - itemHeightPX * yoffoffset + yoffset),
-                             submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
-                }
+                else DrawRect(itemPos, submenu.MenuWidth, itemHeightPX, ItemColor * itemShade, submenu.BGopacity);
             }
-            glm::vec3 col = (i == submenu.SelectedSubMenu) ? ItemTextActive : ItemTextInactive;
+
+            glm::vec3 textColor = (i == submenu.SelectedSubMenu) ? ItemTextActive : ItemTextInactive;
 
             if (submenu.HiearchyView)
             {
-                if (i <= submenu.SelectedSubMenu + vis_below_above && i > submenu.SelectedSubMenu - vis_below_above && (i != submenu.SelectedSubMenu + vis_below_above || submenu.SelectedSubMenu < vis_below_above))
+                bool visible = (i <= submenu.SelectedSubMenu + vis_below_above && i > submenu.SelectedSubMenu - vis_below_above
+                                && (i != submenu.SelectedSubMenu + vis_below_above || submenu.SelectedSubMenu < vis_below_above));
+                if (visible)
                 {
-                    Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
-                                 top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+                    Text::Render(items[i],
+                                centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoff,
+                                top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
+                                ItemTextScaling, textColor);
                 }
             }
             else
             {
-                Text::Render(items[i], centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffoffset,
-                             top_edge - titleHeight - itemHeightPX * (yoffoffset + 1) + yoffset + ItemPaddingYPX, ItemTextScaling, col);
+                Text::Render(items[i],
+                            centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoff,
+                            top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
+                            ItemTextScaling, textColor);
             }
         }
 
-        int cursorxoffset = (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
-        int cursoryoffset = submenu.SelectedSubMenu % submenu.MaxItemsUntilWrap;
-
         // Cursor
-        DrawRect(glm::vec2(right_edge - ItemSelectionThickness, top_edge - titleHeight - itemHeightPX * cursoryoffset + yoffset),
-                 ItemSelectionThickness, itemHeightPX, submenu.ThemeColor);
+        {
+            int cursorx = (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
+            int cursory = submenu.SelectedSubMenu % submenu.MaxItemsUntilWrap;
+
+            DrawRect(glm::vec2(right_edge - ItemSelectionThickness,
+                     top_edge - titleHeight - itemHeightPX * cursory + yoffset),
+                     ItemSelectionThickness, itemHeightPX, submenu.ThemeColor);
+        }
+    }
+
+    void DrawQuad(glm::ivec2 Center, int radius, glm::vec3 Color, float Opacity)
+    {
+        vertices = 
+        {
+            Center.x + radius, Center.y + radius,
+            Center.x - radius, Center.y + radius,
+            Center.x - radius, Center.y - radius,
+            Center.x + radius, Center.y - radius,
+        };
+        rectShader->Use();
+        rectShader->SetVector3("color", Color);
+        rectShader->SetFloat("blend", Opacity);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
+        glBindVertexArray(rectVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     void DrawRect(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 Color, float Opacity)
@@ -400,12 +456,73 @@ namespace UI
             BottomLeft.x, BottomLeft.y,
             TopRight.x,   BottomLeft.y,
         };
-        menuShader->Use();
-        menuShader->SetVector3("color", Color);
-        menuShader->SetFloat("blend", Opacity);
-        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        rectShader->Use();
+        rectShader->SetVector3("color", Color);
+        rectShader->SetFloat("blend", Opacity);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
-        glBindVertexArray(menuVAO);
+        glBindVertexArray(rectVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+    void DrawRectGradient(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 Color1, glm::vec3 Color2)
+    {
+        vertices = 
+        {
+            TopRight.x,   TopRight.y,
+            BottomLeft.x, TopRight.y,
+            BottomLeft.x, BottomLeft.y,
+            TopRight.x,   BottomLeft.y,
+        };
+        gradientRectShader->Use();
+        gradientRectShader->SetVector3("color1", Color1);
+        gradientRectShader->SetVector3("color2", Color2);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
+        glBindVertexArray(rectVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+    void DrawRectBlurred(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 Tint)
+    {
+        vertices = 
+        {
+            TopRight.x,   TopRight.y,
+            BottomLeft.x, TopRight.y,
+            BottomLeft.x, BottomLeft.y,
+            TopRight.x,   BottomLeft.y,
+        };
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, Deferred::GetTexture(Deferred::GShaded));
+        frostedRectShader->Use();
+        frostedRectShader->SetInt("sceneTexture", 0);
+        frostedRectShader->SetVector2("textureSize", { Engine::GetWindowSize().x, Engine::GetWindowSize().y });
+        frostedRectShader->SetVector3("tint", Tint);
+
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
+        glBindVertexArray(rectVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
+
+    void DrawCircle(glm::ivec2 Center, glm::vec3 Color, int OuterRadius, int InnerRadius, float Opacity)
+    {
+        vertices = 
+        {
+            Center.x + OuterRadius, Center.y + OuterRadius,
+            Center.x - OuterRadius, Center.y + OuterRadius,
+            Center.x - OuterRadius, Center.y - OuterRadius,
+            Center.x + OuterRadius, Center.y - OuterRadius,
+        };
+        circleShader->Use();
+        circleShader->SetVector3("color", Color);
+        circleShader->SetFloat("outerRadiusPX", OuterRadius);
+        circleShader->SetFloat("innerRadiusPX", InnerRadius);
+        circleShader->SetFloat("blend",   Opacity);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
+        glBindVertexArray(rectVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
@@ -418,12 +535,12 @@ namespace UI
             TopLeft.x,  TopLeft.y - height,
             TopLeft.x + width, TopLeft.y - height,
         };
-        menuShader->Use();
-        menuShader->SetVector3("color", Color);
-        menuShader->SetFloat("blend", Opacity);
-        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        rectShader->Use();
+        rectShader->SetVector3("color", Color);
+        rectShader->SetFloat("blend", Opacity);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
-        glBindVertexArray(menuVAO);
+        glBindVertexArray(rectVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
@@ -438,6 +555,184 @@ namespace UI
         return false;
     }
 
+    bool isRotating = false;
+    void DrawColorWheel(glm::ivec2 Center, glm::vec3 StartColor, glm::vec3& OutColor, int OuterRadius, int InnerRadius)
+    {
+        DrawCircle(Center, glm::vec3(0.1f), OuterRadius + 2, InnerRadius - 2);
+
+        vertices = 
+        {
+            Center.x + OuterRadius, Center.y + OuterRadius,
+            Center.x - OuterRadius, Center.y + OuterRadius,
+            Center.x - OuterRadius, Center.y - OuterRadius,
+            Center.x + OuterRadius, Center.y - OuterRadius,
+        };
+        colorWheelShader->Use();
+        colorWheelShader->SetFloat("outerRadiusPX", OuterRadius);
+        colorWheelShader->SetFloat("innerRadiusPX", InnerRadius);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
+        glBindVertexArray(rectVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        float diff   = OuterRadius - InnerRadius;
+        float middle = (OuterRadius + InnerRadius) / 2.0f;
+
+        glm::vec2 mouse_pos = glm::vec2(Input::GetMouseX(), Engine::GetWindowSize().y - Input::GetMouseY());
+
+        glm::vec3 hsv = qk::RGBToHSV(StartColor);
+
+        float angle = glm::radians(hsv.x);
+        float distance = glm::distance(mouse_pos, { Center.x, Center.y });
+        if (((Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && distance < OuterRadius && distance > InnerRadius)) || Input::KeyDown(GLFW_KEY_R) || isRotating)
+        {
+            isRotating = true;
+
+            glm::vec2 neutral = mouse_pos - glm::vec2(Center.x, Center.y);
+            angle = -std::atan2f(neutral.x, neutral.y) + M_PI / 2.0f;
+        }
+        else isRotating = false;
+
+        if (isRotating) {
+            if (!Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1)) isRotating = false;
+        }
+
+        float angle_deg = glm::degrees(angle);
+        if (angle_deg < 0) angle_deg += 360.0f;
+
+        glm::ivec2 pos = Center;
+        pos.x += cos(angle) * middle;
+        pos.y += sin(angle) * middle;
+        
+        UI::DrawCircle(pos, glm::vec3(0.95f), diff / 2 - 2);
+        UI::DrawCircle(pos, qk::HSVToRGB({ angle_deg, 1.0f, 1.0f }), diff / 3 - 2);
+        
+        OutColor = qk::HSVToRGB({ angle_deg, 1.0f, 1.0f });
+    }
+
+    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float& OutValue, int HotKey, bool Gradient, glm::vec3 Color1, glm::vec3 Color2)
+    {
+        int id = currentSliderID++; // grab and increment ID automatically
+
+        if (Gradient) {
+            UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.085f));
+            UI::DrawRectGradient(TopRight, BottomLeft, Color1, Color2);
+        }
+        else {
+            UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.085f));
+            UI::DrawRect(TopRight, BottomLeft, glm::vec3(1.0f));
+        }
+
+        if (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight)) {
+            slidingSliderID = id;
+        }
+
+        if (Input::KeyDown(HotKey) && Input::GetInputContext() != Input::TextInput) {
+            slidingSliderID = id;
+            Input::ResetKeyPress(HotKey);
+        }
+
+        if (!Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && slidingSliderID == id && !Input::KeyDown(HotKey)) {
+            slidingSliderID = -1;
+        }
+
+        if (slidingSliderID == id) {
+            float mouseDeltaY = Input::GetMouseDeltaY();
+        
+            float sliderHeight = (TopRight.y - BottomLeft.y);
+            if (sliderHeight != 0.0f) {
+                float deltaValue = mouseDeltaY / sliderHeight;
+                OutValue += deltaValue;
+            }
+        
+            OutValue = glm::clamp(OutValue, 0.0f, 1.0f);
+        }
+
+        float handleY = glm::mix(BottomLeft.y, TopRight.y, OutValue);
+
+        int handleWidth  = 12;
+        int handleHeight = 6;
+
+        glm::ivec2 handleTopRight   = glm::ivec2(TopRight.x + handleWidth / 2, handleY + handleHeight / 2);
+        glm::ivec2 handleBottomLeft = glm::ivec2(BottomLeft.x - handleWidth / 2, handleY - handleHeight / 2);
+
+        UI::DrawRect(handleTopRight + glm::ivec2(2), handleBottomLeft - glm::ivec2(2), glm::vec3(0.085f));
+        UI::DrawRect(handleTopRight, handleBottomLeft, glm::vec3(1.0f));
+    }
+
+    void DrawInputBox(glm::ivec2 TopRight, glm::ivec2 BottomLeft, std::string& OutText, int HotKey, bool OnlyNumbers, bool OnlyIntegers)
+    {
+        // Generate a unique ID based on the address of the input text
+        uintptr_t id = reinterpret_cast<uintptr_t>(&OutText);
+
+        // Handle clicking to focus
+        if (activeInputBoxID == -1 && (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight)))
+        {
+            OutText.clear();
+            activeInputBoxID = id;
+            Input::SetInputContext(Input::TextInput);
+        }
+
+        // Handle hotkey focus
+        if (Input::KeyDown(HotKey) && activeInputBoxID == -1) {
+            OutText.clear();
+            activeInputBoxID = id;
+            Input::ResetKeyPress(HotKey);
+            Input::SetInputContext(Input::TextInput);
+        }
+
+        // If focused, capture input
+        if (activeInputBoxID == id) {
+            std::string newInput = Input::GetTypedCharacters(OnlyNumbers, OnlyIntegers);
+
+            OutText += newInput;
+
+            if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !OutText.empty()) {
+                OutText.pop_back(); // Handle backspace<
+            }
+
+            if (Input::KeyPressed(GLFW_KEY_ENTER) || Input::KeyPressed(GLFW_KEY_ESCAPE) ||
+               (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && !isRectHovered(BottomLeft, TopRight)))
+            {
+                if (OnlyNumbers && !OnlyIntegers) {
+                    if (OutText.size() == 0) OutText = "0.000";
+                    else{
+                        size_t dotPos = OutText.find('.');
+                        if (dotPos == std::string::npos) OutText += ".000";
+                        else {
+                            size_t decimalCount = OutText.size() - dotPos - 1;
+                            if (decimalCount < 3) OutText.append(3 - decimalCount, '0');
+                        }
+                    }
+                }
+
+                activeInputBoxID = -1; // Finish editing
+                Input::SetInputContext(Input::GetPreviousInputContext());
+            }
+
+            UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.85f));
+            UI::DrawRect(TopRight, BottomLeft, glm::vec3(0.15f));
+
+            Text::RenderCentered(OutText, (BottomLeft.x + TopRight.x) / 2, BottomLeft.y + 2, 0.5f, glm::vec3(0.95f));
+
+            // Now draw the cursor at the end of the text
+            float textWidth = Text::CalculateTextWidth(OutText, 0.5f); // Get the width of the current text
+            float cursorX = (BottomLeft.x + TopRight.x) / 2 + textWidth / 2; // Position of the cursor (after text)
+
+            // Draw the cursor (just a thin vertical line)
+            glm::ivec2 cursorTopLeft(cursorX, BottomLeft.y + 2); // Adjust the Y position to align with the text
+            glm::ivec2 cursorBottomRight(cursorX + 2, TopRight.y - 2); // Width of the cursor (a thin line)
+            
+            UI::DrawRect(cursorTopLeft, cursorBottomRight, glm::vec3(0.95f)); // Draw cursor
+        }
+        else {
+            UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.085f));
+            UI::DrawRect(TopRight, BottomLeft, glm::vec3(0.125f));
+
+            Text::RenderCentered(OutText, (BottomLeft.x + TopRight.x) / 2, BottomLeft.y + 2, 0.5f, glm::vec3(0.8f));
+        }
+    }
+
     void DrawArrow(glm::ivec2 TopRight, glm::ivec2 BottomLeft, glm::vec3 color)
     {
         vertices = 
@@ -446,11 +741,11 @@ namespace UI
             BottomLeft.x, BottomLeft.y + ItemSelectionThickness,
             BottomLeft.x + ItemSelectionThickness * 2, (TopRight.y + BottomLeft.y) / 2
         };
-        menuShader->Use();
-        menuShader->SetVector3("color", color);
-        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        rectShader->Use();
+        rectShader->SetVector3("color", color);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]);
-        glBindVertexArray(menuVAO);
+        glBindVertexArray(rectVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 3);
     }
 
@@ -471,6 +766,8 @@ namespace UI
             std::string name = AM::MeshNames[activemenu->SelectedSubMenu];
             SM::Object* obj = new SM::Object(name, name);
             SM::AddNode(obj);
+            SM::SelectSceneNode(SM::SceneNodes.size() - 1);
+            if (!Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) Eject();
         }
     }
 
@@ -481,12 +778,26 @@ namespace UI
             std::string name = AM::LightNames[activemenu->SelectedSubMenu];
             SM::Light* light = new SM::Light("Point Light", SM::LightType::Point, glm::vec3(0), 10.0f, glm::vec3(1), 5.0f);
             SM::AddNode(light);
+            SM::SelectSceneNode(SM::SceneNodes.size() - 1);
+            if (!Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) Eject();
+        }
+    }
+
+    void AssetManagerInput()
+    {
+        for (int key = GLFW_KEY_1; key <= GLFW_KEY_4; ++key) {
+            if (Input::KeyPressed(key))
+            {
+                int submenuIndex = key - GLFW_KEY_1;
+                assetManager.SelectedSubMenu = submenuIndex;
+                activemenu = assetManager.SubMenus[submenuIndex];
+            }
         }
     }
 
     void SceneManagerInput()
     {
-        SM::SelectSceneType(activemenu->SelectedSubMenu);
+        SM::SelectSceneNode(activemenu->SelectedSubMenu);
         if (Input::KeyPressed(GLFW_KEY_ENTER))
         {
             activemenu->HiearchyView = !activemenu->HiearchyView;
@@ -502,14 +813,18 @@ namespace UI
     {
         Engine::RegisterResizeCallback(Resize);
 
-        menuShader    = std::make_unique<Shader>("/res/shaders/ui/menu");
-        defocusShader = std::make_unique<Shader>("/res/shaders/ui/defocus");
+        rectShader         = std::make_unique<Shader>("/res/shaders/ui/rect");
+        gradientRectShader = std::make_unique<Shader>("/res/shaders/ui/gradientrect");
+        frostedRectShader  = std::make_unique<Shader>("/res/shaders/ui/frostedrect");
+        circleShader       = std::make_unique<Shader>("/res/shaders/ui/circle");
+        defocusShader      = std::make_unique<Shader>("/res/shaders/ui/defocus");
+        colorWheelShader   = std::make_unique<Shader>("/res/shaders/ui/colorwheel");
 
-        glGenVertexArrays(1, &menuVAO);
-        glGenBuffers(1, &menuVBO);
+        glGenVertexArrays(1, &rectVAO);
+        glGenBuffers(1, &rectVBO);
 
-        glBindVertexArray(menuVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, menuVBO);
+        glBindVertexArray(rectVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(int) * 2 * 6, NULL, GL_DYNAMIC_DRAW);
 
         glEnableVertexAttribArray(0);
@@ -524,6 +839,7 @@ namespace UI
         mainMenu.Initialize("hotbox", MainMenuColor);
         mainMenu.IsTopLevel = true;
         mainMenu.BGopacity = 0.0f;
+        mainMenu.FrostedBG = true;
         mainMenu.HasHeaderBar = false;
         {
             sceneManager.Initialize("Scene Manager", SecondaryColor, &SM::SceneNodeNames);
@@ -531,16 +847,17 @@ namespace UI
             sceneManager.ExtraInput = SceneManagerInput;
 
             assetManager.Initialize("Asset Manager", TertieryColor);
+            assetManager.ExtraInput = AssetManagerInput;
             {
-                meshes.Initialize("Meshes", SecondaryColor, &AM::MeshNames);
+                meshes.Initialize("Meshes    (1)", SecondaryColor, &AM::MeshNames);
                 meshes.ExtraInput = MeshesInput;
 
-                lights.Initialize("Lights", SecondaryColor, &AM::LightNames);
+                lights.Initialize("Lights    (2)", SecondaryColor, &AM::LightNames);
                 lights.ExtraInput = LightsInput;
 
-                materials.Initialize("Materials", SecondaryColor);
+                materials.Initialize("Materials (3)", SecondaryColor);
 
-                textures.Initialize("Textures", SecondaryColor);
+                textures.Initialize("Textures  (4)", SecondaryColor);
             }
             assetManager.AddSubMenu(&meshes);
             assetManager.AddSubMenu(&lights);
@@ -569,7 +886,15 @@ namespace UI
         centerX = Engine::GetWindowSize().x / 2.0f;
         centerY = Engine::GetWindowSize().y / 2.0f;
         
-        menuShader->Use();
-        menuShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        rectShader->Use();
+        rectShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        gradientRectShader->Use();
+        gradientRectShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        frostedRectShader->Use();
+        frostedRectShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        circleShader->Use();
+        circleShader->SetMatrix4("projection", AM::OrthoProjMat4);
+        colorWheelShader->Use();
+        colorWheelShader->SetMatrix4("projection", AM::OrthoProjMat4);
     }
 }
