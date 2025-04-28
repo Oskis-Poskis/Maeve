@@ -81,8 +81,8 @@ namespace SM
             void SetColor(glm::vec3 Color);
             void SetDirection(glm::vec3 Rotation);
 
-            void SetIntensity(float Intensity);
-            void SetRadius(float Radius);
+            void  SetIntensity(float Intensity);
+            void  SetRadius(float Radius);
             float GetIntensity();
 
             void SetName(std::string Name);
@@ -112,7 +112,7 @@ namespace SM
 
     void Initialize();
 
-    void SelectSceneType(int Index);
+    void SelectSceneNode(int Index);
     int  GetSelectedIndex();
 
     inline std::vector<SceneNode*> SceneNodes;

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -9,18 +10,22 @@
 #include "asset_manager.h"
 #include "../common/camera.h"
 #include "../common/qk.h"
+#include "../common/input.h"
+#include "../ui/ui.h"
 
 namespace SM
 {
-    int _selectedObject;
+    int _selectedSceneNode;
 
     void DrawLights();
     void DrawOrigin();
+    void NodeSelection();
 
     void Initialize()
     {
-        Engine::RegisterEditorDraw3DFunction(DrawLights);
-        Engine::RegisterEditorDraw3DFunction(DrawOrigin);
+        Engine::RegisterEditorDrawUIFunction(DrawLights);
+        Engine::RegisterEditorDrawUIFunction(DrawOrigin);
+        Engine::RegisterEditorFunction(NodeSelection);
     }
 
     void AddNode(Object* Object)
@@ -30,6 +35,7 @@ namespace SM
         CalculateObjectsTriCount();
 
         NumObjects++;
+        _selectedSceneNode = SceneNodes.size() - 1;
         printf("Added object \"%s\" with mesh \"%s\"\n", Object->GetName().c_str(), Object->GetMeshID().c_str());
     }
 
@@ -39,17 +45,18 @@ namespace SM
         SceneNodeNames.push_back(Light->GetName());
 
         NumLights++;
+        _selectedSceneNode = SceneNodes.size() - 1;
         printf("Added light \"%s\"\n", Light->GetName().c_str());
     }
 
-    void SelectSceneType(int Index)
+    void SelectSceneNode(int Index)
     {
-        _selectedObject = glm::min(Index, (int)SceneNodes.size() - 1);
+        _selectedSceneNode = glm::min(Index, (int)SceneNodes.size() - 1);
     }
 
     int GetSelectedIndex()
     {
-        return _selectedObject;
+        return _selectedSceneNode;
     }
 
     void RenderAll()
@@ -104,17 +111,20 @@ namespace SM
         {
             if (node->GetType() == NodeType::Light_)
             {
-                SM::Light* light = dynamic_cast<SM::Light*>(node);   
-                qk::DrawScreenAlignedPlane(light->GetPosition(), 0.125f, 1.0f, light->GetColor());
+                SM::Light* light = dynamic_cast<SM::Light*>(node);
+                glm::vec2 pos = qk::WorldToScreen(light->GetPosition());
+                UI::DrawQuad(pos, 20, light->GetColor());
             }
         }
     }
 
     void DrawOrigin()
     {
-        glDisable(GL_DEPTH_TEST);
-        qk::DrawScreenAlignedPlane(SceneNodes[GetSelectedIndex()]->GetPosition(), 0.025f, 1.0f, qk::HexToRGB(0xff9f2c));
-        glEnable(GL_DEPTH_TEST);
+        if (SceneNodes.size() > 0) {
+            SceneNode* node = SceneNodes[GetSelectedIndex()];
+            glm::vec2 pos = qk::WorldToScreen(node->GetPosition());
+            UI::DrawCircle(pos, qk::HexToRGB(0xff9f2c), 5);
+        }
     }
 
     Object::Object(std::string Name, std::string MeshID)
@@ -300,5 +310,71 @@ namespace SM
     float Light::GetIntensity()
     {
         return _intensity;
+    }
+
+    void NodeSelection()
+    {
+        float closestT = FLT_MAX;
+        int   closestNodeIndex = -1;
+        if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) && Input::GetInputContext() == Input::Game)
+        {
+            glm::vec2 mousePos  = glm::vec2(Input::GetMouseX(), Input::GetMouseY());
+            glm::vec3 nearPoint = qk::ScreenToWorld(mousePos, 0.0f);
+            glm::vec3 farPoint  = qk::ScreenToWorld(mousePos, 1.0f);
+            
+            glm::vec3 worldDir = glm::normalize(farPoint - nearPoint);
+            glm::vec3 worldOrigin = nearPoint;
+
+            AM::ClosestHit closestTri;
+            AM::ClosestHit closestAABB;
+
+            int i = 0;
+            float lightPickRadius = 0.35f;
+            for (const auto& node : SM::SceneNodes) {
+                if (node->GetType() == SM::NodeType::Object_)
+                {
+                    SM::Object* obj  = SM::GetObjectFromNode(node);
+                    AM::Mesh&   mesh = AM::Meshes.at(obj->GetMeshID());
+                    AM::BVH&    bvh  = mesh.bvh;
+
+                    // Transform ray to object space
+                    glm::mat4 modelInv  = glm::inverse(obj->GetModelMatrix());
+                    glm::vec3 objOrigin = glm::vec3(modelInv * glm::vec4(worldOrigin, 1.0f));
+                    glm::vec3 objDir    = glm::vec3(modelInv * glm::vec4(worldDir, 0.0f));
+                    AM::Ray ray(objOrigin, objDir);
+
+                    bvh.TraverseBVH_Ray(bvh.rootIdx, ray, mesh.vertexData, closestTri, closestAABB, obj->GetModelMatrix());
+                    if (closestTri.hit && closestTri.t < closestT) {
+                        closestT = closestTri.t;
+                        closestNodeIndex = i;
+                    }
+                }
+                else if (node->GetType() == SM::NodeType::Light_)
+                {
+                    SM::Light* light = SM::GetLightFromNode(node);
+
+                    // Ray-sphere intersection
+                    glm::vec3 L = light->GetPosition() - worldOrigin;
+                    float tca = glm::dot(L, worldDir);
+                    if (tca > 0.0f) // Only if light is in front of the camera
+                    {
+                        float d2 = glm::dot(L, L) - tca * tca;
+                        if (d2 <= lightPickRadius * lightPickRadius)
+                        {
+                            float thc = sqrt(lightPickRadius * lightPickRadius - d2);
+                            float t = tca - thc; // distance along ray to closest hit
+
+                            if (t < closestT)
+                            {
+                                closestT = t;
+                                closestNodeIndex = i;
+                            }
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+        if (closestNodeIndex != -1) SM::SelectSceneNode(closestNodeIndex);
     }
 }
