@@ -14,6 +14,7 @@
 #include "../../common/input.h"
 #include "../../common/stat_counter.h"
 #include "../../ui/text_renderer.h"
+#include <format>
 
 namespace ObjectManipulation
 {
