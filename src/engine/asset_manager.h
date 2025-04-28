@@ -90,8 +90,12 @@ namespace AM
             std::vector<Tri> triIndices;
 
             void Build(const std::vector<VtxData>& vertices);
-            void DrawBVH(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix);
-            void TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices, ClosestHit& closestHit, ClosestHit& closestHitAABB);
+            void DrawBVHRecursive(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix);
+            void TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray,
+                                 const std::vector<VtxData>& vertices,
+                                 ClosestHit& closestHit, ClosestHit& closestHitAABB,
+                                 const glm::mat4& parentMatrix = glm::mat4(1.0f),
+                                 bool drawDebug = false);
 
         private:
             unsigned int build_recursive(const std::vector<VtxData>& vertices, unsigned int start, unsigned int count);
@@ -125,10 +129,13 @@ namespace AM
     inline std::unordered_map<std::string, Mesh> Meshes;
     inline std::vector<std::string> MeshNames;
     inline std::vector<std::string> LightNames = { "Point Light" };
+
     inline std::unique_ptr<Shader> S_GBuffers;
-    inline std::unique_ptr<Shader> S_BVHVis;
     inline std::unique_ptr<Shader> S_SingleColor;
     inline std::unique_ptr<Shader> S_Lambert;
+    inline std::unique_ptr<Shader> S_BVHVis;
+    inline std::unique_ptr<Shader> S_BVHVisInstanced;
+
     inline int UniqueMeshTriCount;
 
     inline Camera EditorCam;

@@ -5,12 +5,16 @@
 using namespace std::chrono;
 
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include "asset_manager.h"
+#include "scene_manager.h"
 #include "render_engine.h"
 #include "../ui/text_renderer.h"
 #include "../ui/ui.h"
 #include "../common/stat_counter.h"
 #include "../common/qk.h"
+#include "../common/input.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,11 +22,14 @@ using namespace std::chrono;
 namespace AM
 {
     void Resize(int width, int height);
+    void VisualizeMeshBVH();
 
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
         Engine::RegisterEditorFunction([&]() { EditorCam.Update(); });
+        Engine::RegisterEditorDraw3DFunction(VisualizeMeshBVH);
+
         Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
 
         AddMeshByData(AM::Presets::CubeOutlineVtxData, AM::Presets::CubeOutlineIndices, "MV::CUBEOUTLINE");
@@ -30,9 +37,10 @@ namespace AM
         AddMeshByData(AM::Presets::CubeVtxData, AM::Presets::CubeIndices, "cube");
         AddMeshByData(std::vector<VtxData> {}, "empty");
         
-        S_GBuffers     = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
-        S_BVHVis       = std::make_unique<Shader>("/res/shaders/editor/bvh_vis");
-        S_SingleColor  = std::make_unique<Shader>("/res/shaders/editor/singlecolor");
+        S_GBuffers        = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
+        S_SingleColor     = std::make_unique<Shader>("/res/shaders/editor/singlecolor");
+        S_BVHVis          = std::make_unique<Shader>("/res/shaders/editor/bvh_vis");
+        S_BVHVisInstanced = std::make_unique<Shader>("/res/shaders/editor/bvh_vis_instanced");
 
         EditorCam         = Camera(glm::vec3(0.0f, -3.0f, 0.0f), 70, -90.0f, 0.0f);
         EditorCam.WorldUp = glm::vec3(0.0f, 0.0f, 1.0f);
@@ -71,6 +79,10 @@ namespace AM
         qk::StartTimer();
         bvh.Build(VertexData);
         std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
+
+        qk::StartTimer();
+        /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
+        std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
     }
 
     Mesh::Mesh(const std::vector<VtxData> &VertexData)
@@ -100,6 +112,10 @@ namespace AM
         qk::StartTimer();
         bvh.Build(VertexData);
         std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
+
+        qk::StartTimer();
+        /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
+        std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
     }
 
     void AddMeshByData(const std::vector<VtxData>& VertexData, std::string Name)
@@ -118,6 +134,59 @@ namespace AM
     {
         OrthoProjMat4 = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
         ProjMat4 = glm::perspective(glm::radians(AM::EditorCam.Fov), (float)width / height, 0.1f, 1000.0f);
+    }
+
+    int minDepth = 0;
+    int maxDepth = 6;
+    void VisualizeMeshBVH()
+    {
+        if (Engine::debugMode == 2) {
+            SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
+            if (node->GetType() == SM::NodeType::Object_)
+            {
+                SM::Object* obj  = SM::GetObjectFromNode(node);
+                AM::Mesh&   mesh = AM::Meshes.at(obj->GetMeshID());
+                AM::BVH&    bvh  = mesh.bvh;
+
+                bool inGame = Input::GetInputContext() == Input::InputContext::Game;
+                if (inGame && Input::KeyPressed(GLFW_KEY_DOWN))  maxDepth--;
+                if (inGame && Input::KeyPressed(GLFW_KEY_UP))    maxDepth++;
+                if (inGame && Input::KeyPressed(GLFW_KEY_LEFT))  minDepth = std::max(minDepth - 1, 0);
+                if (inGame && Input::KeyPressed(GLFW_KEY_RIGHT)) minDepth++;
+
+                if (!Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1)) bvh.DrawBVHRecursive(bvh.rootIdx, 0, minDepth, maxDepth, obj->GetModelMatrix());
+                else {
+                    glm::vec2 mousePos  = glm::vec2(Input::GetMouseX(), Input::GetMouseY());
+                    glm::vec3 nearPoint = qk::ScreenToWorld(mousePos, 0.0f);
+                    glm::vec3 farPoint  = qk::ScreenToWorld(mousePos, 1.0f);
+
+                    glm::vec3 worldDir    = glm::normalize(farPoint - nearPoint);
+                    glm::vec3 worldOrigin = nearPoint;
+
+                    glm::mat4 modelInv  = glm::inverse(obj->GetModelMatrix());
+                    glm::vec3 objOrigin = glm::vec3(modelInv * glm::vec4(worldOrigin, 1.0f));
+                    glm::vec3 objDir    = glm::vec3(modelInv * glm::vec4(worldDir, 0.0f));
+                    AM::Ray ray(objOrigin, objDir);
+                    
+                    AM::ClosestHit closestTri;
+                    AM::ClosestHit closestAABB;
+                    bvh.TraverseBVH_Ray(bvh.rootIdx, ray, mesh.vertexData, closestTri, closestAABB, obj->GetModelMatrix(), true);
+                    
+                    if (closestTri.hit) {
+                        glm::vec3 v0 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v0, 1.0f));
+                        glm::vec3 v1 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v1, 1.0f));
+                        glm::vec3 v2 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v2, 1.0f));
+
+                        qk::DrawLine(v0, v1, {0.0f, 1.0f, 0.0f}, 4);
+                        qk::DrawLine(v1, v2, {0.0f, 1.0f, 0.0f}, 4);
+                        qk::DrawLine(v2, v0, {0.0f, 1.0f, 0.0f}, 4);
+
+                        qk::DrawTri(v0, v1, v2, {0.0f, 0.0f, 1.0f});
+                    }
+                }
+                // qk::DrawBVHCubesInstanced(obj->GetModelMatrix(), 2);
+            }
+        }        
     }
 
     glm::vec3 Tri::GetCenter(const std::vector<VtxData>& vertices) const
@@ -318,7 +387,7 @@ namespace AM
         return nodeIdx;
     }
 
-    void BVH::DrawBVH(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix)
+    void BVH::DrawBVHRecursive(unsigned int nodeIdx, unsigned int curDepth, unsigned int minDepth, unsigned int maxDepth, const glm::mat4& parentMatrix)
     {
         const BVH_Node& node = bvhNodes[nodeIdx];
         if (node.isLeaf) return;
@@ -330,12 +399,12 @@ namespace AM
         }
         
         if (curDepth < maxDepth) {
-            DrawBVH(node.leftChild, curDepth + 1, minDepth, maxDepth, parentMatrix);
-            DrawBVH(node.rightChild, curDepth + 1, minDepth, maxDepth, parentMatrix);
+            DrawBVHRecursive(node.leftChild, curDepth + 1, minDepth, maxDepth, parentMatrix);
+            DrawBVHRecursive(node.rightChild, curDepth + 1, minDepth, maxDepth, parentMatrix);
         }
     }
 
-    void BVH::TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices, ClosestHit& closestHit, ClosestHit& closestHitAABB)
+    void BVH::TraverseBVH_Ray(unsigned int nodeIdx, Ray& ray, const std::vector<VtxData>& vertices, ClosestHit& closestHit, ClosestHit& closestHitAABB, const glm::mat4& parentMatrix, bool drawDebug)
     {
         const BVH_Node& node = bvhNodes[nodeIdx];
 
@@ -344,8 +413,7 @@ namespace AM
         float aabbTMin = tMin;
         float aabbTMax = tMax;
 
-        if (!ray.IntersectAABB(node.aabb, aabbTMin, aabbTMax))
-            return;
+        if (!ray.IntersectAABB(node.aabb, aabbTMin, aabbTMax)) return;
 
         // Track closest AABB hit
         if (aabbTMin < closestHitAABB.t) {
@@ -377,14 +445,16 @@ namespace AM
             return;
         }
 
-        // glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-        // qk::DrawBVHCube(node.aabb.min, node.aabb.max, glm::mat4(1.0f), color);
+        if (drawDebug) {
+            glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
+            qk::DrawBVHCube(node.aabb.min, node.aabb.max, parentMatrix, color);
+        }
 
         // Recurse left and right only if valid
         if (node.leftChild != UINT32_MAX)
-            TraverseBVH_Ray(node.leftChild, ray, vertices, closestHit, closestHitAABB);
+            TraverseBVH_Ray(node.leftChild,  ray, vertices, closestHit, closestHitAABB, parentMatrix, drawDebug);
         if (node.rightChild != UINT32_MAX)
-            TraverseBVH_Ray(node.rightChild, ray, vertices, closestHit, closestHitAABB);
+            TraverseBVH_Ray(node.rightChild, ray, vertices, closestHit, closestHitAABB, parentMatrix, drawDebug);
     }
 
 }
