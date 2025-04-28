@@ -8,6 +8,9 @@ namespace Input
     {
         Game,
         Menu,
+        PopupMenu,
+        TextInput,
+        Transforming
     };
 
     std::string InputContextString();
@@ -21,9 +24,12 @@ namespace Input
     bool KeyPressed(unsigned int keycode);
     bool KeyDown(unsigned int keycode);
     void ResetKeyPress(unsigned int keycode);
-    bool LeftMBDown();
-    bool RightMBDown();
-    bool MiddleMBDown();
+
+    bool MouseButtonReleased(int button);
+    bool MouseButtonPressed(int button);
+    bool MouseButtonDown(int button);
+    void ConsumeMouseButton(int button);
+    std::string GetTypedCharacters(bool OnlyNumerals = false, bool OnlyIntegers = false);
 
     glm::vec2 GetMouseXY();
     float GetMouseX();

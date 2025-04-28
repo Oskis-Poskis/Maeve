@@ -12,6 +12,11 @@ namespace Input
     bool _keyDown[348];
     bool _keyDownLastFrame[348];
 
+    bool _mousePressed[8];
+    bool _mouseDown[8];
+    bool _mouseDownLastFrame[8];
+    bool _mouseConsumed[8]; 
+
     double _mouseX, _mouseY;
     float  _xDelta, _yDelta;
     float  _lastX,  _lastY;
@@ -43,6 +48,27 @@ namespace Input
                 _keyDownLastFrame[i] = _keyDown[i];
             }
 
+            for (int i = 0; i < 8; i++)
+            {
+                // Button Down
+                if (glfwGetMouseButton(Engine::WindowPtr(), i) == GLFW_PRESS)
+                    _mouseDown[i] = true;
+                else
+                    _mouseDown[i] = false;
+
+                // Single Press (frame perfect)
+                if (_mouseDown[i] && !_mouseDownLastFrame[i])
+                    _mousePressed[i] = true;
+                else
+                    _mousePressed[i] = false;
+
+                // Save for next frame
+                _mouseDownLastFrame[i] = _mouseDown[i];
+
+                // Reset consumed
+                _mouseConsumed[i] = false;
+            }
+
             glfwGetCursorPos(Engine::WindowPtr(), &_mouseX, &_mouseY);
 
             _xDelta = _mouseX - _lastX;
@@ -57,8 +83,11 @@ namespace Input
     {
         switch (inputContext)
         {
-            case Game:      return "Game";
-            case Menu:      return "Menu";
+            case Game:         return "Game";
+            case Menu:         return "Menu";
+            case TextInput:    return "Text Input";
+            case PopupMenu:    return "Popup Menu";
+            case Transforming: return "Transforming";
         }
     }
 
@@ -93,19 +122,55 @@ namespace Input
         _keyPressed[keycode] = false;
     }
 
-    bool RightMBDown()
+    bool MouseButtonPressed(int button)
     {
-        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS ? 1 : 0;
+        return _mousePressed[button] && !_mouseConsumed[button];
     }
 
-    bool LeftMBDown()
+    bool MouseButtonDown(int button)
     {
-        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS ? 1 : 0;
+        return _mouseDown[button] && !_mouseConsumed[button];
     }
 
-    bool MiddleMBDown()
+    bool MouseButtonReleased(int button)
     {
-        return glfwGetMouseButton(Engine::WindowPtr(), GLFW_MOUSE_BUTTON_3) == GLFW_PRESS ? 1 : 0;
+        return _mouseDownLastFrame[button] && _mouseDown[button];
+    }
+
+    void ConsumeMouseButton(int button)
+    {
+        _mouseConsumed[button] = true;
+    }
+
+    std::string GetTypedCharacters(bool OnlyNumbers, bool OnlyIntegers)
+    {
+        std::string result = "";
+
+        if (!OnlyNumbers) {
+            // Handle printable keys (letters, numbers, symbols)
+            for (int key = GLFW_KEY_A; key <= GLFW_KEY_Z; key++) {
+                if (_keyPressed[key]) {
+                    // Convert to lowercase if needed (or implement shift handling if desired)
+                    result += (char)(key + ('A' - GLFW_KEY_A)); // 'A' is 65 in ASCII, so we map correctly
+                }
+            }
+    
+            if (_keyPressed[GLFW_KEY_SPACE])  result += ' ';
+            if (_keyPressed[GLFW_KEY_COMMA])  result += ',';
+            if (_keyPressed[GLFW_KEY_MINUS])  result += '-';
+            if (_keyPressed[GLFW_KEY_SLASH])  result += '/';
+            if (_keyPressed[GLFW_KEY_EQUAL])  result += '=';
+            if (_keyPressed[GLFW_KEY_SEMICOLON]) result += ';';
+        }
+        
+        for (int key = GLFW_KEY_0; key <= GLFW_KEY_9; key++) {
+            if (_keyPressed[key]) {
+                result += (char)(key + ('0' - GLFW_KEY_0)); // Map key to correct digit
+            }
+        }
+        if (_keyPressed[GLFW_KEY_PERIOD] && !OnlyIntegers) result += '.';
+
+        return result;
     }
 
     glm::vec2 GetMouseXY()
