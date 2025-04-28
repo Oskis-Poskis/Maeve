@@ -7,6 +7,22 @@ struct GLFWwindow;
 
 namespace Engine
 {
+    enum DebugMode {
+        None     = 1,
+        BVH      = 2,
+        Deferred = 3
+    };
+    inline DebugMode debugMode = DebugMode::None;
+    inline const char* DebugModeToString(DebugMode mode) {
+        switch (mode) {
+            case None:      return "None";
+            case BVH:       return "BVH";
+            case Deferred:  return "Deferred";
+
+            default:   return "Unknown";
+        }
+    }
+
     // Window
     GLFWwindow* WindowPtr();
     glm::ivec2 GetWindowSize();

@@ -12,6 +12,7 @@
 #include "scene_manager.h"
 #include "deferred/deffered_manager.h"
 #include "editor/object_manipulation.h"
+#include "editor/light_manipulation.h"
 #include "../common/stat_counter.h"
 #include "../common/input.h"
 #include "../common/qk.h"
@@ -40,7 +41,7 @@ namespace Engine
 
     void errorCallback(int error, const char* description);
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-    
+
     void windowResized(GLFWwindow* window, int width, int height)
     {
         glViewport(0, 0, width, height);
@@ -48,8 +49,7 @@ namespace Engine
         windowWidth  = width;
         windowHeight = height;
 
-        for (const auto& callback : resizeCallbacks) { callback(windowWidth, windowHeight); }
-    }
+        for (const auto& callback : resizeCallbacks) { callback(windowWidth, windowHeight); }    }
 
     void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
     void RegisterEditorFunction(const std::function<void()>& func) { editorEvents.push_back(func); }
@@ -87,6 +87,7 @@ namespace Engine
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
         
             window = glfwCreateWindow(windowWidth, windowHeight, "Maeve 0.0.1", NULL, NULL);
+            if (!window) std::cout << "[!] Failed to create window\n";
             glfwMakeContextCurrent(window);
             
             glfwSetErrorCallback(errorCallback);
@@ -127,7 +128,8 @@ namespace Engine
         Deferred::Initialize();
         SM::Initialize();
         AM::Initialize();
-        Manipulation::Initialize();
+        ObjectManipulation::Initialize();
+        LightManipulation::Initialize();
         Text::Initialize();
         UI::Initialize();
         qk::Initialize();
@@ -141,9 +143,6 @@ namespace Engine
         Quit();
     }
 
-    int minDepth = 0;
-    int maxDepth = 2;
-
     const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     void NewFrame()
     {
@@ -153,6 +152,12 @@ namespace Engine
         if (Input::KeyDown(GLFW_KEY_SPACE) && Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
         if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL) && Input::KeyPressed(GLFW_KEY_Q)) Quit();
+        for (int i = 0; i <= 9; ++i) {
+            if (Input::KeyPressed(GLFW_KEY_0 + i) && Input::GetInputContext() == Input::Game) {
+                debugMode = static_cast<DebugMode>(i);
+                break;
+            }
+        }
 
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
 
@@ -175,84 +180,35 @@ namespace Engine
         /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvent) { func(); }
         // -------------------------------------------
 
-        bool inGame = Input::GetInputContext() == Input::InputContext::Game;
-        if (inGame && Input::KeyPressed(GLFW_KEY_DOWN))  maxDepth--;
-        if (inGame && Input::KeyPressed(GLFW_KEY_UP))    maxDepth++;
-        if (inGame && Input::KeyPressed(GLFW_KEY_LEFT))  minDepth = std::max(minDepth - 1, 0);
-        if (inGame && Input::KeyPressed(GLFW_KEY_RIGHT)) minDepth++;
-
-        SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
-        if (node->GetType() == SM::NodeType::Object_) {
-            SM::Object* obj  = SM::GetObjectFromNode(node);
-            AM::Mesh&   mesh = AM::Meshes.at(obj->GetMeshID());
-            AM::BVH&    bvh  = mesh.bvh;
-
-            // bvh.DrawBVH(bvh.rootIdx, 0, minDepth, maxDepth, obj->GetModelMatrix());
-
-            glm::vec2 mousePos    = glm::vec2(Input::GetMouseX(), Input::GetMouseY());
-            glm::vec3 nearPoint   = qk::ScreenToWorld(mousePos, 0.0f);
-            glm::vec3 farPoint    = qk::ScreenToWorld(mousePos, 1.0f);
-            
-            glm::vec3 worldDir = glm::normalize(farPoint - nearPoint);
-            glm::vec3 worldOrigin = nearPoint;
-
-            // Transform ray to object space
-            glm::mat4 modelInv = glm::inverse(obj->GetModelMatrix());
-            glm::vec3 objOrigin = glm::vec3(modelInv * glm::vec4(worldOrigin, 1.0f));
-            glm::vec3 objDir    = glm::vec3(modelInv * glm::vec4(worldDir, 0.0f));
-            AM::Ray ray(objOrigin, objDir);
-
-            AM::ClosestHit closestTri;
-            AM::ClosestHit closestAABB;
-            bvh.TraverseBVH_Ray(bvh.rootIdx, ray, mesh.vertexData, closestTri, closestAABB);
-
-            if (closestTri.hit) {
-                glm::vec3 v0 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v0, 1.0f));
-                glm::vec3 v1 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v1, 1.0f));
-                glm::vec3 v2 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v2, 1.0f));
-
-                qk::DrawLine(v0, v1, {0.0f, 1.0f, 0.0f}, 4);
-                qk::DrawLine(v1, v2, {0.0f, 1.0f, 0.0f}, 4);
-                qk::DrawLine(v2, v0, {0.0f, 1.0f, 0.0f}, 4);
-
-                qk::DrawTri(v0, v1, v2, {0.0f, 0.0f, 1.0f});
-
-                // qk::DrawLine(closestTri.v0, closestTri.v0 + closestTri.n0 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
-                // qk::DrawLine(closestTri.v1, closestTri.v1 + closestTri.n1 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
-                // qk::DrawLine(closestTri.v2, closestTri.v2 + closestTri.n2 * 0.15f, {1.0f, 0.0f, 0.0f}, 4);
-            }
-
-            qk::DrawLine(worldOrigin, worldOrigin + worldDir * 10.0f);
-        }
-
-
         // Display -----------------------------------
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glEnable(GL_BLEND);
+        glDisable(GL_DEPTH_TEST);
         Deferred::DoPostProcessAndDisplay();
-        /* EDITOR ONLY */ Deferred::VisualizeGBuffers();
+        /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred) Deferred::VisualizeGBuffers();
+        /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvent) { func(); }
         /* EDITOR ONLY */ UI::Render();
 
-        if (node->GetType() == SM::NodeType::Object_) {
-            SM::Object* obj = SM::GetObjectFromNode(node);
+        // if (node->GetType() == SM::NodeType::Object_) {
+        //     SM::Object* obj = SM::GetObjectFromNode(node);
             
-            glDisable(GL_DEPTH_TEST);
-            glm::vec2 sp   = qk::WorldToScreen(obj->GetPosition());
-            int textHeight = Text::CalculateMaxTextAscent("Test", 0.5f);
-            int spacing    = 3;
-            int numNodes   = AM::Meshes.at(obj->GetMeshID()).bvh.bvhNodes.size();
+        //     glDisable(GL_DEPTH_TEST);
+        //     glm::vec2 sp   = qk::WorldToScreen(obj->GetPosition());
+        //     int textHeight = Text::CalculateMaxTextAscent("Test", 0.5f);
+        //     int spacing    = 3;
+        //     int numNodes   = AM::Meshes.at(obj->GetMeshID()).bvh.bvhNodes.size();
 
-            Text::RenderCenteredBG("Mesh: " + obj->GetMeshID(), sp.x, sp.y - textHeight, 0.5f, glm::vec3(0.95f));
-            Text::RenderCenteredBG(std::format("BVH Nodes: {}", numNodes), sp.x, sp.y - textHeight * 2 - spacing, 0.5f, glm::vec3(0.95f));
-            glEnable(GL_DEPTH_TEST);
-        }
+        //     Text::RenderCenteredBG("Mesh: " + obj->GetMeshID(), sp.x, sp.y - textHeight, 0.5f, glm::vec3(0.95f));
+        //     Text::RenderCenteredBG(std::format("BVH Nodes: {}", numNodes), sp.x, sp.y - textHeight * 2 - spacing, 0.5f, glm::vec3(0.95f));
+        //     glEnable(GL_DEPTH_TEST);
+        // }
 
-        /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvent) { func(); }
         Stats::Count(glfwGetTime());
         Stats::DrawStats();
         glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
         // -------------------------------------------
 
         glfwSwapBuffers(window);
