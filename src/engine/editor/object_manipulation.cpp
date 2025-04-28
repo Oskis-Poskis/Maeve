@@ -15,7 +15,7 @@
 #include "../../common/stat_counter.h"
 #include "../../ui/text_renderer.h"
 
-namespace Manipulation
+namespace ObjectManipulation
 {
     std::vector<bool> axisMask = { 1, 1, 1, 0 }; // last bool is local or not
 
@@ -166,7 +166,9 @@ namespace Manipulation
 
     void Transform()
     {
-        if (Input::GetInputContext() == Input::Game)
+        if ((Input::GetInputContext() == Input::Game ||
+             Input::GetInputContext() == Input::PopupMenu ||
+             Input::GetInputContext() == Input::Transforming) && !SM::SceneNodes.empty())
         {
             SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
 
@@ -194,6 +196,8 @@ namespace Manipulation
                 my  = Engine::GetWindowSize().y - startPosScreen.y;
                 mx_ = startPosScreen.x;
                 my_ = Engine::GetWindowSize().y - startPosScreen.y;
+
+                Input::SetInputContext(Input::Transforming);
             }
             if (Input::KeyPressed(GLFW_KEY_R) && !AM::EditorCam.Moving && !AM::EditorCam.Turning)
             {
@@ -214,6 +218,8 @@ namespace Manipulation
                 
                 startAngle = glm::degrees((std::atan2f(neutral.x, neutral.y)));
                 rs_delta = 0.0f;
+
+                Input::SetInputContext(Input::Transforming);
             }
             if (Input::KeyPressed(GLFW_KEY_T) && !AM::EditorCam.Moving && !AM::EditorCam.Turning)
             {
@@ -232,6 +238,8 @@ namespace Manipulation
                 glm::vec2 screen_pos = qk::WorldToScreen(previousPos);
 
                 rs_delta = 0.0f;
+
+                Input::SetInputContext(Input::Transforming);
             }
             if (translating)
             {
@@ -239,17 +247,20 @@ namespace Manipulation
                 glm::vec3 new_pos = CalculatePointOnAxisOrPlane(previousPos, dist);
                 node->SetPosition(new_pos);
 
-                if (Input::LeftMBDown() ||
+                if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
                     AM::EditorCam.Turning ||
                     AM::EditorCam.Moving)
                 {
                     translating = false;
                     axisMask = { 1, 1, 1, 0 };
+                    Input::SetInputContext(Input::Game);
+                    Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
                 }
                 else if (Input::KeyPressed(GLFW_KEY_ESCAPE)) {
                     translating = false;
                     axisMask = { 1, 1, 1, 0 };
                     node->SetPosition(previousPos);
+                    Input::SetInputContext(Input::Game);
                 }
             }
             if (rotating)
@@ -274,7 +285,7 @@ namespace Manipulation
                         glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
 
                     rs_delta += Input::GetMouseDeltaX();
-                    angle = (rs_delta / Engine::GetWindowSize().x) * 360.0f;
+                    angle = (rs_delta / Engine::GetWindowSize().x) * 720.0f;
                 }
 
                 glm::vec3 front = AM::EditorCam.Front;
@@ -295,12 +306,14 @@ namespace Manipulation
                 SM::Object* object = dynamic_cast<SM::Object*>(node);
                 object->SetRotationQuat(delta * prevRotQuat);
 
-                if (Input::LeftMBDown() ||
+                if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
                     AM::EditorCam.Turning ||
                     AM::EditorCam.Moving)
                 {
                     rotating = false;
                     axisMask = { 1, 1, 1, 0 };
+                    Input::SetInputContext(Input::Game);
+                    Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
                 }
                 else if (Input::KeyPressed(GLFW_KEY_ESCAPE))
                 {
@@ -308,6 +321,7 @@ namespace Manipulation
                     axisMask = { 1, 1, 1, 0 };
                     rs_delta  = 0.0f;
                     object->SetRotationEuler(previousRot);
+                    Input::SetInputContext(Input::Game);
                 }
             }
             if (scaling)
@@ -342,12 +356,14 @@ namespace Manipulation
                 SM::Object* object = dynamic_cast<SM::Object*>(node);
                 object->SetScale(new_scale);
 
-                if (Input::LeftMBDown() ||
+                if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
                     AM::EditorCam.Turning ||
                     AM::EditorCam.Moving)
                 {
                     scaling = false;
                     axisMask = { 1, 1, 1, 0 };
+                    Input::SetInputContext(Input::Game);
+                    Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
                 }
                 else if (Input::KeyPressed(GLFW_KEY_ESCAPE))
                 {
@@ -355,6 +371,7 @@ namespace Manipulation
                     axisMask = { 1, 1, 1, 0 };
                     rs_delta  = 0.0f;
                     object->SetScale(previousScale);
+                    Input::SetInputContext(Input::Game);
                 }
             }
         }
@@ -364,9 +381,10 @@ namespace Manipulation
     float axisLengthBase = 10.0f;
     void DrawAxis()
     {
+        if (SM::SceneNodes.empty()) return;
         SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
 
-        if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Game)
+        if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Transforming)
         {
             if (axisMask[0] && axisMask[1] && axisMask[2]) return;
 
@@ -415,11 +433,9 @@ namespace Manipulation
 
     void DrawAxisText()
     {
-        if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Game) {
-            glDisable(GL_DEPTH_TEST);
+        if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Transforming) {
             Text::RenderCenteredBG(axisFromMask(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 40, 0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
             if (rotating) Text::RenderCenteredBG(std::format("{:.{}f}", angle, 2), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 60, 0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
-            glEnable(GL_DEPTH_TEST);
         }
     }
 

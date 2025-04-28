@@ -141,6 +141,7 @@ namespace Deferred
         S_postprocessQuad->Use();
         S_postprocessQuad->SetInt("framebuffer", GShaded);
         S_postprocessQuad->SetInt("mask", GMask);
+        S_postprocessQuad->SetVector2("size", Engine::GetWindowSize());
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
@@ -149,9 +150,7 @@ namespace Deferred
 
         glBindVertexArray(defferedQuadVAO);
 
-        glDisable(GL_DEPTH_TEST);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        glEnable(GL_DEPTH_TEST);
     }
 
     void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel, bool sampleStencil)
@@ -189,6 +188,8 @@ namespace Deferred
 
     void DrawMask()
     {
+        if (SM::SceneNodes.empty()) return;
+        
         SM::Object* object = dynamic_cast<SM::Object*>(SM::SceneNodes[SM::GetSelectedIndex()]);
         if (object)
         {
@@ -208,7 +209,6 @@ namespace Deferred
 
             glEnable(GL_DEPTH_TEST);
         }
-
     }
 
     void DoShading()
@@ -255,8 +255,6 @@ namespace Deferred
     float textScale = 0.5f;
     void VisualizeGBuffers()
     {
-        glDisable(GL_DEPTH_TEST);
-
         struct QuadInfo {
             glm::vec2 BottomLeft, TopRight;
             Deferred::GBuffer texture;
@@ -278,7 +276,5 @@ namespace Deferred
             glm::ivec2 pos = qk::NDCToPixel(quad.TopRight.x - length * 0.5f, quad.TopRight.y);
             Text::RenderCenteredBG(quad.title, pos.x, pos.y - Text::CalculateMaxTextAscent("G", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
         }
-
-        glEnable(GL_DEPTH_TEST);
     }
 }

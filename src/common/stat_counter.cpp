@@ -44,30 +44,31 @@ namespace Stats
     {
         std::string memory = std::format("VRAM: {} / {}mb", Stats::GetVramUsageMb(), Stats::GetVRAMTotalMb());
         timer += Stats::GetDeltaTime();
-        if (timer >= (1 / (40.0f)))
+        if (timer >= (1 / (60.0f)))
         {
             timer = 0.0f;
             
             avgfps = alpha * avgfps + (1.0f - alpha) * GetFPS();
-            avgms  = alpha * avgms + (1.0f - alpha) * GetMS();
+            avgms  = alpha * avgms  + (1.0f - alpha) * GetMS();
 
             FPS = std::format("{:<4} {:>7.2f}", "FPS:", avgfps);
             ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
         }
 
         std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AM::Meshes.size(), qk::FmtK(AM::UniqueMeshTriCount));
-        std::string objects = std::format<int>("Objects in scene: {} ({} triangles)", SM::SceneNodes.size(), qk::FmtK(SM::ObjectsTriCount));
+        std::string objects = std::format<int>("Nodes in scene: {} ({} triangles)", SM::SceneNodes.size(), qk::FmtK(SM::ObjectsTriCount));
         
         glDisable(GL_DEPTH_TEST);
         float lineSpacing = 20 * Text::GetGlobalTextScaling();
-        Text::Render(Stats::Renderer,                                          15, Engine::GetWindowSize().y - yOffset - 0 * lineSpacing, textScaling);
-        Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()), 15, Engine::GetWindowSize().y - yOffset - 1 * lineSpacing, textScaling);
-        Text::Render(FPS,                                                      15, Engine::GetWindowSize().y - yOffset - 3 * lineSpacing, textScaling);
-        Text::Render(ms,                                                       15, Engine::GetWindowSize().y - yOffset - 4 * lineSpacing, textScaling);
-        if (Vendor == "NVIDIA Corporation") Text::Render(memory,               15, Engine::GetWindowSize().y - yOffset - 5 * lineSpacing, textScaling);
-        Text::Render(meshes,                                                   15, Engine::GetWindowSize().y - yOffset - 7 * lineSpacing, textScaling);
-        Text::Render(objects,                                                  15, Engine::GetWindowSize().y - yOffset - 8 * lineSpacing, textScaling);
-        Text::Render("Input Context: " + Input::InputContextString(),          15, Engine::GetWindowSize().y - yOffset - 10 * lineSpacing, textScaling);
+        Text::Render(Stats::Renderer,                                                  15, Engine::GetWindowSize().y - yOffset - 0  * lineSpacing, textScaling);
+        Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()),         15, Engine::GetWindowSize().y - yOffset - 1  * lineSpacing, textScaling);
+        Text::Render(FPS,                                                              15, Engine::GetWindowSize().y - yOffset - 3  * lineSpacing, textScaling);
+        Text::Render(ms,                                                               15, Engine::GetWindowSize().y - yOffset - 4  * lineSpacing, textScaling);
+        if (Vendor == "NVIDIA Corporation") Text::Render(memory,                       15, Engine::GetWindowSize().y - yOffset - 5  * lineSpacing, textScaling);
+        Text::Render(meshes,                                                           15, Engine::GetWindowSize().y - yOffset - 7  * lineSpacing, textScaling);
+        Text::Render(objects,                                                          15, Engine::GetWindowSize().y - yOffset - 8  * lineSpacing, textScaling);
+        Text::Render("Input Context: " + Input::InputContextString(),                  15, Engine::GetWindowSize().y - yOffset - 10 * lineSpacing, textScaling);
+        Text::Render("Debug Mode: "    + std::string(Engine::DebugModeToString(Engine::debugMode)), 15, Engine::GetWindowSize().y - yOffset - 11 * lineSpacing, textScaling);
         glEnable(GL_DEPTH_TEST);
     }
 

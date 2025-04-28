@@ -1,6 +1,6 @@
 #pragma once
 
-namespace Manipulation
+namespace ObjectManipulation
 {
     void Initialize();
 }

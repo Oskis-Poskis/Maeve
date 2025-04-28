@@ -74,9 +74,9 @@ double downposx, downposy;
 
 void Camera::Update()
 {
-    // if (Input::GetInputContext() != Input::TextInput)
+    if (Input::GetInputContext() != Input::TextInput)
     {
-        if (Input::RightMBDown() || Input::KeyDown(GLFW_KEY_LEFT_ALT))
+        if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_2) || Input::KeyDown(GLFW_KEY_LEFT_ALT))
         {
             Turning = true;
             glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
