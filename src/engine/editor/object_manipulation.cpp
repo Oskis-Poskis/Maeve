@@ -34,6 +34,8 @@ namespace ObjectManipulation
     bool scaling = false;
     glm::vec3 previousScale;
 
+    std::string typedAxisValue;
+
     float mx,  my;
     float mx_, my_;
 
@@ -221,6 +223,9 @@ namespace ObjectManipulation
                 rs_delta = 0.0f;
 
                 Input::SetInputContext(Input::Transforming);
+
+                Input::EnableTextInput();
+                typedAxisValue = "";
             }
             if (Input::KeyPressed(GLFW_KEY_T) && !AM::EditorCam.Moving && !AM::EditorCam.Turning)
             {
@@ -285,8 +290,15 @@ namespace ObjectManipulation
                     else if (Input::GetMouseX() <= 5)
                         glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
 
-                    rs_delta += Input::GetMouseDeltaX();
-                    angle = (rs_delta / Engine::GetWindowSize().x) * 720.0f;
+                    typedAxisValue += Input::GetTypedCharacters(true);
+                    if (typedAxisValue.size() > 0) {
+                        if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !typedAxisValue.empty()) typedAxisValue.pop_back();
+                        angle = qk::TextToFloat(typedAxisValue);
+                    }
+                    else {
+                        rs_delta += Input::GetMouseDeltaX();
+                        angle = (rs_delta / Engine::GetWindowSize().x) * 720.0f;
+                    }
                 }
 
                 glm::vec3 front = AM::EditorCam.Front;
@@ -307,7 +319,7 @@ namespace ObjectManipulation
                 SM::Object* object = dynamic_cast<SM::Object*>(node);
                 object->SetRotationQuat(delta * prevRotQuat);
 
-                if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
+                if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) || Input::KeyPressed(GLFW_KEY_ENTER) ||
                     AM::EditorCam.Turning ||
                     AM::EditorCam.Moving)
                 {
@@ -315,6 +327,7 @@ namespace ObjectManipulation
                     axisMask = { 1, 1, 1, 0 };
                     Input::SetInputContext(Input::Game);
                     Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
+                    Input::DisableTextInput();
                 }
                 else if (Input::KeyPressed(GLFW_KEY_ESCAPE))
                 {
@@ -323,6 +336,7 @@ namespace ObjectManipulation
                     rs_delta  = 0.0f;
                     object->SetRotationEuler(previousRot);
                     Input::SetInputContext(Input::Game);
+                    Input::DisableTextInput();
                 }
             }
             if (scaling)
@@ -436,7 +450,11 @@ namespace ObjectManipulation
     {
         if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Transforming) {
             Text::RenderCenteredBG(axisFromMask(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 40, 0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
-            if (rotating) Text::RenderCenteredBG(std::format("{:.{}f}", angle, 2), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 60, 0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
+            if (rotating) {
+                std::string rotation = (typedAxisValue.size() > 0 ? typedAxisValue : std::format("{:.{}f}", angle, 2));
+                Text::RenderCenteredBG(rotation, Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 60,
+                                       0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
+            }
         }
     }
 
