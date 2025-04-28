@@ -31,6 +31,10 @@ namespace Input
     void ConsumeMouseButton(int button);
     std::string GetTypedCharacters(bool OnlyNumerals = false, bool OnlyIntegers = false);
 
+    void EnableTextInput(bool skipFirstInput = false);
+    void DisableTextInput();
+    void ClearCharList();
+
     glm::vec2 GetMouseXY();
     float GetMouseX();
     float GetMouseY();

@@ -24,10 +24,28 @@ namespace Input
     InputContext inputContext = Game;
     InputContext previousInputContext;
 
+    std::string g_TypedCharacters;
+    bool g_TextInputActive = false;
+    bool justEnabledTextInput = false;
+    void CharCallback(GLFWwindow* window, unsigned int codepoint)
+    {
+        if (!g_TextInputActive) return;
+        if (justEnabledTextInput) {
+            justEnabledTextInput = false;
+            return;
+        }
+
+        if (codepoint >= 32 && codepoint <= 126) { // Printable ASCII
+            g_TypedCharacters += static_cast<char>(codepoint);
+        }
+    }
+
     void Initialize()
     {
         _lastX = Engine::GetWindowSize().x / 2;
         _lastY = Engine::GetWindowSize().y / 2;
+
+        glfwSetCharCallback(Engine::WindowPtr(), CharCallback);
     }
 
     float timer = 0;
@@ -146,31 +164,36 @@ namespace Input
     {
         std::string result = "";
 
-        if (!OnlyNumbers) {
-            // Handle printable keys (letters, numbers, symbols)
-            for (int key = GLFW_KEY_A; key <= GLFW_KEY_Z; key++) {
-                if (_keyPressed[key]) {
-                    // Convert to lowercase if needed (or implement shift handling if desired)
-                    result += (char)(key + ('A' - GLFW_KEY_A)); // 'A' is 65 in ASCII, so we map correctly
-                }
+        for (char c : g_TypedCharacters)
+        {
+            if (OnlyNumbers)
+            {
+                if (c >= '0' && c <= '9')
+                    result += c;
+                else if (c == '-' || c == '+' || (!OnlyIntegers && c == '.'))
+                    result += c;
             }
-    
-            if (_keyPressed[GLFW_KEY_SPACE])  result += ' ';
-            if (_keyPressed[GLFW_KEY_COMMA])  result += ',';
-            if (_keyPressed[GLFW_KEY_MINUS])  result += '-';
-            if (_keyPressed[GLFW_KEY_SLASH])  result += '/';
-            if (_keyPressed[GLFW_KEY_EQUAL])  result += '=';
-            if (_keyPressed[GLFW_KEY_SEMICOLON]) result += ';';
+            else result += c;
         }
-        
-        for (int key = GLFW_KEY_0; key <= GLFW_KEY_9; key++) {
-            if (_keyPressed[key]) {
-                result += (char)(key + ('0' - GLFW_KEY_0)); // Map key to correct digit
-            }
-        }
-        if (_keyPressed[GLFW_KEY_PERIOD] && !OnlyIntegers) result += '.';
+
+        g_TypedCharacters.clear();
 
         return result;
+    }
+
+    void ClearCharList() { g_TypedCharacters.clear(); }
+
+    void EnableTextInput(bool skipFirstInput)
+    {
+        ClearCharList();
+        g_TextInputActive = true;
+        justEnabledTextInput = skipFirstInput;
+    }
+
+    void DisableTextInput()
+    {
+        ClearCharList();
+        g_TextInputActive = false;
     }
 
     glm::vec2 GetMouseXY()
