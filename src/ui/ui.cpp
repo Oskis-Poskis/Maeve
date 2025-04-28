@@ -136,12 +136,12 @@ namespace UI
             }
         }
 
-        if (Input::KeyPressed(GLFW_KEY_PERIOD) && Input::GetInputContext() != Input::TextInput) {
+        if (Input::KeyPressed(GLFW_KEY_PERIOD) && Input::GetInputContext() != Input::TextInput && Input::GetInputContext() != Input::Transforming) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() + 0.2f);
             Resize(0, 0);
             RecalcMenuWidths(toplevelmenu);
         }
-        if (Input::KeyPressed(GLFW_KEY_COMMA) && Input::GetInputContext() != Input::TextInput) {
+        if (Input::KeyPressed(GLFW_KEY_COMMA) && Input::GetInputContext() != Input::TextInput && Input::GetInputContext() != Input::Transforming) {
             Text::SetGlobalTextScaling(Text::GetGlobalTextScaling() - 0.2f);
             Resize(0, 0);
             RecalcMenuWidths(toplevelmenu);
@@ -336,6 +336,7 @@ namespace UI
         int maxVisibleColumns = 7;
         int selectedColumn = submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap;
         int halfVisibleColumns = maxVisibleColumns / 2;
+        int numColumns = items.size() / submenu.MaxItemsUntilWrap;
 
         // Calculate min and max visible columns based on selection
         int minVisibleColumn = selectedColumn - halfVisibleColumns;
@@ -351,7 +352,7 @@ namespace UI
             int row    = i % submenu.MaxItemsUntilWrap;
 
             // Only draw if inside visible columns
-            if (column < minVisibleColumn || column > maxVisibleColumn)
+            if ((column < minVisibleColumn || column > maxVisibleColumn) && numColumns >= maxVisibleColumns)
                 continue;
 
             int xoff = column * submenu.MenuWidth + xoffset;
@@ -670,25 +671,24 @@ namespace UI
         {
             OutText.clear();
             activeInputBoxID = id;
+            Input::EnableTextInput();
             Input::SetInputContext(Input::TextInput);
         }
 
         // Handle hotkey focus
-        if (Input::KeyDown(HotKey) && activeInputBoxID == -1) {
+        if (Input::KeyPressed(HotKey) && activeInputBoxID == -1) {
             OutText.clear();
             activeInputBoxID = id;
-            Input::ResetKeyPress(HotKey);
+            Input::EnableTextInput(true);
             Input::SetInputContext(Input::TextInput);
         }
 
         // If focused, capture input
         if (activeInputBoxID == id) {
-            std::string newInput = Input::GetTypedCharacters(OnlyNumbers, OnlyIntegers);
-
-            OutText += newInput;
+            OutText += Input::GetTypedCharacters(OnlyNumbers, OnlyIntegers);
 
             if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !OutText.empty()) {
-                OutText.pop_back(); // Handle backspace<
+                OutText.pop_back(); // Handle backspace
             }
 
             if (Input::KeyPressed(GLFW_KEY_ENTER) || Input::KeyPressed(GLFW_KEY_ESCAPE) ||
@@ -708,6 +708,7 @@ namespace UI
 
                 activeInputBoxID = -1; // Finish editing
                 Input::SetInputContext(Input::GetPreviousInputContext());
+                Input::DisableTextInput();
             }
 
             UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.85f));
