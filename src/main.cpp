@@ -2,6 +2,8 @@
 #include "engine/asset_manager.h"
 #include "engine/scene_manager.h"
 
+#include <ctime>
+
 int main()
 {
     Engine::Initialize();

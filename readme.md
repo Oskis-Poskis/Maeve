@@ -14,8 +14,8 @@ For Windows, make sure to place the required libraries in the following director
 ### Linux Setup:  
 On Linux, you’ll need to install the following dependencies:
 - libglm-dev  
-- libglfw-dev  
-- libfreetype6-dev  
+- libglfw-dev / libglfw3-dev
+- libfreetype6-dev
 - glad
 
 ### Build Instructions:  
