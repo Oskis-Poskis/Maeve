@@ -1,32 +1,31 @@
-<<<<<<< HEAD
-# Maeve
+# Maeve  
 Custom game engine hobby project
 
-Makefile is supposed to work for Windows and Linux.
-Windows...
-Linux requires libglm-dev, libglfw-dev, libfreetype6-dev and glad
+The project’s Makefile shoooooould work on both Windows and Linux, though Windows requires a specific include setup that will be addressed in the future.
 
-### Features
-* Deferred phong shading (position reconstruction from depth) & OBJ file parsing
-![](Doc/Viewport.png)
-![](Doc/DeferredShading.png)
-* Text rendering and custom UI interface
-![](Doc/UI-Menu.png)
-![](Doc/Scene-manager.png)
-* Viewport transformations (WIP)
-![](Doc/Transformations.png)
-=======
-# Maeve
-Custom game engine hobby project
+### Windows Setup:  
+For Windows, make sure to place the required libraries in the following directories:  
+- C:/include/  
+- C:/include/GLFW/include  
+- C:/include/GLFW/lib-mingw-w64
+- C:/include/freetype2/include 
+- C:/include/freetype2/build
 
-Makefile is made for linux and uses shared libraries, won't work on windows yet
-### Features
-* Deferred phong shading (position reconstruction from depth) & OBJ file parsing
-![](Doc/Viewport.png)
-![](Doc/DeferredShading.png)
-* Text rendering and custom UI interface
-![](Doc/UI-Menu.png)
-![](Doc/Scene-manager.png)
-* Viewport transformations (WIP)
-![](Doc/Transformations.png)
->>>>>>> fb38fb1 (Init)
+Include and library paths are specified in the Makefile, like so:  
+- -IC:/include/GLFW/include  
+- -IC:/include/freetype2/include  
+- -LC:/include/GLFW/lib-mingw-w64  
+- -LC:/include/freetype2/build
+
+### Linux Setup:  
+On Linux, you’ll need to install the following dependencies:  
+- libglm-dev  
+- libglfw-dev  
+- libfreetype6-dev  
+- glad
+
+### Build Instructions:  
+Once dependencies are set up, simply run:
+
+- `make -j`
+- Or `make -j release`
