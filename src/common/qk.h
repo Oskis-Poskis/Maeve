@@ -48,6 +48,9 @@ namespace qk
     void  StartTimer();
     double StopTimer();
 
+    void BeginGPUTimer(const std::string& stage_name);
+    std::string EndGPUTimer(const std::string& stageName);
+
     inline unsigned int bvhVisSSBO;
     inline std::vector<glm::mat4> bvhVisMatrices;
     void PrepareBVHVis(const std::vector<AM::BVH_Node>& bvhNodes);

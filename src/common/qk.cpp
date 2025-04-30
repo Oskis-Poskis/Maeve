@@ -10,13 +10,31 @@ namespace fs = std::filesystem;
 #include "qk.h"
 #include "../engine/render_engine.h"
 #include "../engine/asset_manager.h"
+#include <deque>
+#include <iostream>
 
 namespace qk
 {
+    std::deque<double> gpuTimings;
+    const size_t maxSamples = 100;
+    std::unordered_map<std::string, GLuint> queryObjects;  // Store multiple query objects by name
+    std::unordered_map<std::string, bool> queryActive;
+
+    void InitializeQuery(const std::string& stageName)
+    {
+        GLuint queryID;
+        glGenQueries(1, &queryID);  // Generate a new query object
+        queryObjects[stageName] = queryID;  // Store it with the stage name
+        queryActive[stageName] = false;    // Mark the query as inactive initially
+    }
+
     unsigned int line_vao, line_vbo;
     unsigned int tri_vao,  tri_vbo;
     void Initialize()
     {
+        InitializeQuery("GBuffers");
+        InitializeQuery("Shading");
+
         glGenVertexArrays(1, &line_vao);
         glGenBuffers(1, &line_vbo);
 
@@ -458,5 +476,46 @@ namespace qk
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start).count();
         return static_cast<double>(duration) / 1000000.0;
+    }
+    
+    void BeginGPUTimer(const std::string& stageName)
+    {
+        if (!queryActive[stageName])
+        {
+            glBeginQuery(GL_TIME_ELAPSED, queryObjects[stageName]);
+            queryActive[stageName] = true;
+        }
+    }
+
+    std::string EndGPUTimer(const std::string& stageName)
+    {
+        if (!queryActive[stageName]) return "";  // Return empty if no query is active for this stage
+
+        glEndQuery(GL_TIME_ELAPSED);
+
+        GLint available = 0;
+        // Check if the result is available from the previous frame
+        glGetQueryObjectiv(queryObjects[stageName], GL_QUERY_RESULT_AVAILABLE, &available);
+
+        if (available) {
+            GLuint64 elapsed;
+            glGetQueryObjectui64v(queryObjects[stageName], GL_QUERY_RESULT, &elapsed);
+            double ms = elapsed / 1e6;
+
+            gpuTimings.push_back(ms);
+            if (gpuTimings.size() > maxSamples)
+                gpuTimings.pop_front();
+
+            double avg = std::accumulate(gpuTimings.begin(), gpuTimings.end(), 0.0) / gpuTimings.size();
+
+            std::stringstream result;
+            result << "Stage \"" << stageName << "\" GPU time: " << std::fixed << std::setprecision(2) << ms << " ms\n";
+            // result << "Average GPU time for \"" << stageName << "\": " << std::fixed << std::setprecision(2) << avg << " ms\n";
+
+            queryActive[stageName] = false;  // Mark query as inactive after finishing the measurement
+            return result.str();
+        }
+
+        return "";  // Return empty if the result is not available yet
     }
 }
