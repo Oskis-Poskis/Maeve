@@ -10,7 +10,8 @@ namespace Engine
     enum DebugMode {
         None     = 1,
         BVH      = 2,
-        Deferred = 3
+        Deferred = 3,
+        Timings  = 4
     };
     inline DebugMode debugMode = DebugMode::None;
     inline const char* DebugModeToString(DebugMode mode) {
@@ -18,6 +19,7 @@ namespace Engine
             case None:      return "None";
             case BVH:       return "BVH";
             case Deferred:  return "Deferred";
+            case Timings:   return "Timings";
 
             default:   return "Unknown";
         }
@@ -33,6 +35,7 @@ namespace Engine
     void RegisterEditorFunction(const std::function<void()>& func);
     void RegisterEditorDraw3DFunction(const std::function<void()>& func);
     void RegisterEditorDrawUIFunction(const std::function<void()>& func);
+    void RegisterEditorReloadShadersFunction(const std::function<void()>& func);
 
     // Running
     void Initialize();

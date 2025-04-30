@@ -23,6 +23,24 @@ namespace SM
         Directional
     };
 
+    struct Material
+    {
+        glm::vec3 albedo = glm::vec3(1.0f);
+        float metallic   = 0.0f;
+        
+        float roughness = 0.5f;
+        float ao = 1.0f;
+    
+        // int useTextures = 0;
+        // int albedoMap = -1;
+        // int normalMap = -1;
+        // int metallicMap = -1;
+        // int roughnessMap = -1;
+        // int aoMap = -1;
+    
+        Material() = default;
+    };
+
     class SceneNode
     {
         public:
@@ -103,7 +121,7 @@ namespace SM
             NodeType _nodeType = NodeType::Light_;
     };
     
-    void RenderAll();
+    void DrawGBuffers();
     void CalculateObjectsTriCount();
     void AddNode(Object* Object);
     void AddNode(Light* Object);

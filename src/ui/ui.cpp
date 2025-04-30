@@ -864,7 +864,7 @@ namespace UI
             assetManager.AddSubMenu(&lights);
             assetManager.AddSubMenu(&materials);
             assetManager.AddSubMenu(&textures);
-            
+        
             statistics.Initialize("Statistics", SecondaryColor);
             engine.Initialize("Engine",         SecondaryColor);
             qk.Initialize("Qk",                 SecondaryColor);

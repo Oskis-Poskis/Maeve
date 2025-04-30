@@ -59,7 +59,7 @@ namespace SM
         return _selectedSceneNode;
     }
 
-    void RenderAll()
+    void DrawGBuffers()
     {
         AM::S_GBuffers->Use();
         AM::S_GBuffers->SetMatrix4("projection", AM::ProjMat4);

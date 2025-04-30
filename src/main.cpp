@@ -13,10 +13,11 @@ int main()
     AM::IO::LoadObj("res/objs/sphere.obj",         "loaded_3");
     AM::IO::LoadObj("res/objs/cube.obj",           "loaded_4");
     AM::IO::LoadObj("res/objs/teapot.obj",         "loaded_5");
+    AM::IO::LoadObj("res/objs/xyzrgb_dragon.obj",  "Dragon");
 
     std::vector<std::string> meshIDs = { "loaded_1", "loaded_2", "loaded_3", "loaded_4", "loaded_5" };
 
-    int num = 10;
+    int num = 8;
     int spacing = 4;
 
     std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -44,12 +45,31 @@ int main()
         SM::AddNode(myobj);
     }
 
-    SM::Light light1("Point Light1", SM::LightType::Point, glm::vec3( 0, 0, 2.5f), 10.0f, glm::vec3(1, 1, 1), 5.0f);
-    SM::Light light2("Point Light2", SM::LightType::Point, glm::vec3(-7, 0, 2.5f), 10.0f, glm::vec3(0, 1, 1), 5.0f);
-    SM::Light light3("Point Light3", SM::LightType::Point, glm::vec3( 7, 0, 2.5f), 10.0f, glm::vec3(1, 0, 0), 5.0f);
-    // SM::AddNode(&light2);
-    // SM::AddNode(&light3);
-    // SM::AddNode(&light1);
- 
+    int numLights = 3;
+    int spacingLight = 8;
+
+    for (int i = 0; i < numLights * numLights * numLights; i++)
+    {
+        int x = i % numLights;
+        int y = i / (numLights * numLights);
+        int z = (i / numLights) % numLights;
+
+        glm::vec3 pos = glm::vec3(
+            x * spacingLight - ((numLights - 1) * spacingLight) / 2.0f,
+            y * spacingLight,
+            z * spacingLight - ((numLights - 1) * spacingLight) / 2.0f
+        );
+
+        glm::vec3 color = glm::vec3(
+            static_cast<float>(rand() % 100) / 100.0f,
+            static_cast<float>(rand() % 100) / 100.0f,
+            static_cast<float>(rand() % 100) / 100.0f
+        );
+
+        std::string name = "auto_light_" + std::to_string(i);
+        SM::Light* light = new SM::Light(name, SM::LightType::Point, pos, 10.0f, color, 10.0f);
+        SM::AddNode(light);
+    }
+
     Engine::Run();
 }

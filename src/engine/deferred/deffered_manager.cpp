@@ -17,6 +17,7 @@
 namespace Deferred
 {
     void Resize(int width, int height);
+    void ReloadShaders();
 
     unsigned int deferredFBO;
     unsigned int defferedQuadVAO;
@@ -30,6 +31,7 @@ namespace Deferred
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
+        Engine::RegisterEditorReloadShadersFunction(ReloadShaders);
 
         glGenFramebuffers(1, &deferredFBO);
         glBindFramebuffer(GL_FRAMEBUFFER, deferredFBO);
@@ -54,7 +56,7 @@ namespace Deferred
         glBindTexture(GL_TEXTURE_2D, GBuffers[GMask]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, GBuffers[GMask], 0);
 
-        // Depth Stencil
+        // Depth
         glGenTextures(1, &GBuffers[GDepth]);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, GBuffers[GDepth], 0);
@@ -87,30 +89,30 @@ namespace Deferred
     {
         glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0,  GL_RGB, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GAlbedo]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,  GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0,  GL_RGB, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GMask]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0,  GL_RED, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
 
     unsigned int &GetFBO()
@@ -276,5 +278,14 @@ namespace Deferred
             glm::ivec2 pos = qk::NDCToPixel(quad.TopRight.x - length * 0.5f, quad.TopRight.y);
             Text::RenderCenteredBG(quad.title, pos.x, pos.y - Text::CalculateMaxTextAscent("G", textScale), textScale, glm::vec3(0.9f), glm::vec3(0.05f));
         }
+    }
+
+    void ReloadShaders()
+    {
+        S_shading->Reload();
+        S_mask->Reload();
+        S_quad->Reload();
+        S_fullscreenQuad->Reload();
+        S_postprocessQuad->Reload();
     }
 }

@@ -36,8 +36,9 @@ namespace Engine
 
     std::vector<std::function<void(int, int)>> resizeCallbacks;
     std::vector<std::function<void()>> editorEvents;
-    std::vector<std::function<void()>> editorDraw3DEvent;
-    std::vector<std::function<void()>> editorDrawUIEvent;
+    std::vector<std::function<void()>> editorDraw3DEvents;
+    std::vector<std::function<void()>> editorDrawUIEvents;
+    std::vector<std::function<void()>> editorReloadShaderEvents;
 
     void errorCallback(int error, const char* description);
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -53,8 +54,9 @@ namespace Engine
 
     void RegisterResizeCallback(const std::function<void(int, int)> &callback) { resizeCallbacks.push_back(callback); }
     void RegisterEditorFunction(const std::function<void()>& func) { editorEvents.push_back(func); }
-    void RegisterEditorDraw3DFunction(const std::function<void()>& func) { editorDraw3DEvent.push_back(func); }
-    void RegisterEditorDrawUIFunction(const std::function<void()>& func) { editorDrawUIEvent.push_back(func); }
+    void RegisterEditorDraw3DFunction(const std::function<void()>& func) { editorDraw3DEvents.push_back(func); }
+    void RegisterEditorDrawUIFunction(const std::function<void()>& func) { editorDrawUIEvents.push_back(func); }
+    void RegisterEditorReloadShadersFunction(const std::function<void()> &func) { editorReloadShaderEvents.push_back(func); }
 
     void windowMaximized(GLFWwindow* window, int maximized)
     {
@@ -160,6 +162,8 @@ namespace Engine
         }
 
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
+        /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_HOME))
+                              for (const auto& func : editorReloadShaderEvents) { func(); }
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
         AM::ViewMat4 = AM::EditorCam.GetViewMatrix();
@@ -169,14 +173,20 @@ namespace Engine
         glDrawBuffers(4, buffers);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        SM::RenderAll();
+        qk::BeginGPUTimer("GBuffers");
+        SM::DrawGBuffers();
+        std::string timing = qk::EndGPUTimer("GBuffers");
+        if (!timing.empty()) std::cout <<  timing;
         /* EDITOR ONLY */ Deferred::DrawMask(); // R8 texture used for outline generation
         // -------------------------------------------
 
         // Draw deferred shaded to color attachment 0
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        qk::BeginGPUTimer("Shading");
         Deferred::DoShading();
-        /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvent) { func(); }
+        std::string timing2 = qk::EndGPUTimer("Shading");
+        if (!timing2.empty()) std::cout <<  timing2;
+        /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvents) { func(); }
         // -------------------------------------------
 
         // Display -----------------------------------
@@ -187,7 +197,7 @@ namespace Engine
         glDisable(GL_DEPTH_TEST);
         Deferred::DoPostProcessAndDisplay();
         /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred) Deferred::VisualizeGBuffers();
-        /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvent) { func(); }
+        /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvents) { func(); }
         /* EDITOR ONLY */ UI::Render();
 
         Stats::Count(glfwGetTime());

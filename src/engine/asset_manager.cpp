@@ -23,12 +23,14 @@ namespace AM
 {
     void Resize(int width, int height);
     void VisualizeMeshBVH();
+    void ReloadShaders();
 
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
         Engine::RegisterEditorFunction([&]() { EditorCam.Update(); });
         Engine::RegisterEditorDraw3DFunction(VisualizeMeshBVH);
+        Engine::RegisterEditorReloadShadersFunction(ReloadShaders);
 
         Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
 
@@ -457,4 +459,11 @@ namespace AM
             TraverseBVH_Ray(node.rightChild, ray, vertices, closestHit, closestHitAABB, parentMatrix, drawDebug);
     }
 
+    void ReloadShaders()
+    {
+        S_GBuffers->Reload();
+        S_SingleColor->Reload();
+        S_BVHVis->Reload();
+        S_BVHVisInstanced->Reload();
+    }
 }
