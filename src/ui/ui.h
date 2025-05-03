@@ -24,9 +24,9 @@ namespace UI
     class Menu
     {
         public:
-            Menu() : Items(nullptr) { }
-            Menu(std::string MenuTitle, glm::vec3 ThemeCol) : Items(nullptr) { Initialize(MenuTitle, ThemeCol); }
-            Menu(std::string MenuTitle, glm::vec3 ThemeCol, std::vector<std::string>* Items) : Items(Items) { Initialize(MenuTitle, ThemeCol, Items); }
+            Menu() : Items(nullptr) {}
+            Menu(std::string MenuTitle, glm::vec3 ThemeCol) : Items(nullptr) { Initialize(MenuTitle, ThemeCol); };
+            Menu(std::string MenuTitle, glm::vec3 ThemeCol, std::vector<std::string>* items) : Items(items) { Initialize(MenuTitle, ThemeCol, items); };
 
             std::string Title;
             int SelectedSubMenu = 0;
@@ -34,7 +34,7 @@ namespace UI
             bool IsTopLevel     = false;
             bool HasItems       = false;
             std::vector<Menu*> SubMenus;
-            std::vector<std::string>* Items;
+            std::vector<std::string>* Items = nullptr;
             std::function<void()> ExtraInput;
             Menu* parent;
 

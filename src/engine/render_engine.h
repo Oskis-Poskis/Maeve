@@ -11,7 +11,7 @@ namespace Engine
         None     = 1,
         BVH      = 2,
         Deferred = 3,
-        Timings  = 4
+        Stats  = 4
     };
     inline DebugMode debugMode = DebugMode::None;
     inline const char* DebugModeToString(DebugMode mode) {
@@ -19,7 +19,7 @@ namespace Engine
             case None:      return "None";
             case BVH:       return "BVH";
             case Deferred:  return "Deferred";
-            case Timings:   return "Timings";
+            case Stats:     return "Stats";
 
             default:   return "Unknown";
         }

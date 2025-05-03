@@ -68,6 +68,27 @@ void Camera::KeyboardInput(Movement_Direction direction)
     if (direction == UP)       _targetPosition += WorldUp * velocity;
 }
 
+void Camera::SetPosition(glm::vec3 NewPosition)
+{
+    Position        = NewPosition;
+    _targetPosition = NewPosition;
+}
+
+void Camera::SetTargetPosition(glm::vec3 NewPosition)
+{
+    _targetPosition = NewPosition;
+}
+
+void Camera::SetDirection(glm::vec3 NewDirection)
+{
+    Front = glm::normalize(NewDirection);
+    Right = glm::normalize(glm::cross(Front, WorldUp));
+    Up    = glm::normalize(glm::cross(Right, Front));
+
+    Pitch = glm::degrees(asin(Front.z));
+    Yaw  = -glm::degrees(atan2(Front.y, Front.x));
+}
+
 bool firstClick = true, unrightclick = true;
 double mousex, mousey;
 double downposx, downposy;
@@ -128,7 +149,7 @@ void Camera::Update()
             }
         }
 
-        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier);
+        Position = glm::mix(Position, _targetPosition, InterpolationMultiplier * Stats::GetDeltaTime());
         // Position = _targetPosition;
     }
 }

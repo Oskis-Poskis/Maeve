@@ -59,6 +59,51 @@ namespace SM
         return _selectedSceneNode;
     }
 
+    void FocusSelection(float screenPercentage)
+    {
+        SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
+        if (node->GetType() == SM::NodeType::Object_) {
+            SM::Object* obj = SM::GetObjectFromNode(node);
+            AM::Mesh& mesh = AM::Meshes.at(obj->GetMeshID());
+            AM::BVH& bvh = mesh.bvh;
+
+            // Object's model matrix
+            glm::mat4 modelMatrix = obj->GetModelMatrix();
+
+            // Get the AABB corners in local space
+            glm::vec3 aabbMin = bvh.bvhNodes[bvh.rootIdx].aabb.min;
+            glm::vec3 aabbMax = bvh.bvhNodes[bvh.rootIdx].aabb.max;
+
+            // Transform the AABB corners by the full model matrix
+            glm::vec3 transformedMin = glm::vec3(modelMatrix * glm::vec4(aabbMin, 1.0f));
+            glm::vec3 transformedMax = glm::vec3(modelMatrix * glm::vec4(aabbMax, 1.0f));
+
+            float objectHeight = glm::abs(transformedMax.y - transformedMin.y);
+            float objectWidth  = glm::abs(transformedMax.x - transformedMin.x);
+
+            objectHeight /= screenPercentage;
+            objectWidth  /= screenPercentage;
+
+            float aspect = Engine::GetWindowSize().x / Engine::GetWindowSize().y;
+
+            // Compute the required distance based on FOV (height or width constraint)
+            float distY = (objectHeight * 0.5f) / tan(glm::radians(AM::EditorCam.Fov) * 0.5f);
+            float fovX_rad = 2 * atan(tan(glm::radians(AM::EditorCam.Fov) * 0.5f) * aspect);
+            float distX = (objectWidth * 0.5f) / tan(fovX_rad * 0.5f);
+
+            // Final camera distance
+            float cameraDistance = std::max(distY, distX);
+
+            // Get the camera's view direction
+            glm::vec3 viewDirection = glm::normalize(obj->GetPosition() - AM::EditorCam.Position);
+
+            // Set the final camera position
+            glm::vec3 cameraPos = obj->GetPosition() - viewDirection * cameraDistance;
+            AM::EditorCam.SetTargetPosition(cameraPos);
+            AM::EditorCam.SetDirection(viewDirection);
+        }
+    }
+
     void DrawGBuffers()
     {
         AM::S_GBuffers->Use();

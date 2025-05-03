@@ -142,7 +142,7 @@ namespace AM
     int maxDepth = 6;
     void VisualizeMeshBVH()
     {
-        if (Engine::debugMode == 2) {
+        if (Engine::debugMode == 2 && !SM::SceneNodeNames.empty()) {
             SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
             if (node->GetType() == SM::NodeType::Object_)
             {
@@ -179,9 +179,11 @@ namespace AM
                         glm::vec3 v1 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v1, 1.0f));
                         glm::vec3 v2 = glm::vec3(obj->GetModelMatrix() * glm::vec4(closestTri.v2, 1.0f));
 
+                        glDisable(GL_DEPTH_TEST);
                         qk::DrawLine(v0, v1, {0.0f, 1.0f, 0.0f}, 4);
                         qk::DrawLine(v1, v2, {0.0f, 1.0f, 0.0f}, 4);
                         qk::DrawLine(v2, v0, {0.0f, 1.0f, 0.0f}, 4);
+                        glEnable(GL_DEPTH_TEST);
 
                         qk::DrawTri(v0, v1, v2, {0.0f, 0.0f, 1.0f});
                     }

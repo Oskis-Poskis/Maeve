@@ -17,7 +17,7 @@ const float YAW   = -90.0f;
 const float PITCH =  0.0f;
 const float SPEED =  10.0f;
 const float FOV   =  50.0f;
-const float INTERPOLATION_MULTIPLIER = 0.1f;
+const float INTERPOLATION_MULTIPLIER = 10.0f;
 const float SENSITIVITY = 0.125f;
 
 class Camera
@@ -44,6 +44,9 @@ class Camera
         glm::mat4 GetViewMatrix();
         void MouseInput(float xOffset, float yOffset);
         void KeyboardInput(Movement_Direction direction);
+        void SetPosition(glm::vec3 NewPosition);
+        void SetTargetPosition(glm::vec3 NewPosition);
+        void SetDirection(glm::vec3 NewDirection);
         void Update();
 
     private:

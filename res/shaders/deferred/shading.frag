@@ -35,6 +35,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 
+vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir);
 vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir);
 vec3 CalcPointLightPhong(PointLight light, vec3 albedo, vec3 normal, vec3 viewpos, vec3 viewdir);
 
@@ -56,6 +57,8 @@ void main()
     for (int i = 0; i < NumPointLights; i++) {
         final += CalcPointLight(PointLights[i], albedo, normal, metallic, roughness, ao, viewPos, viewDir);
     }
+
+    final += CalcDirLight(albedo, normal, metallic, roughness, ao, viewPos, viewDir);
 
     vec3 ambient = BG * albedo * ao;
     final = ambient + final;
@@ -111,6 +114,36 @@ vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, float metallic, 
     float len = length(dir);
     float attenuation = 1.0 / (len * len);
     vec3 radiance = light.color * light.intensity * attenuation;
+
+    // Fresnel reflectance at normal incidence
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
+    float NDF = DistributionGGX(N, H, roughness);
+    float G   = GeometrySmith(N, V, L, roughness);
+    vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3  nom   = NDF * G * F;
+    float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
+    vec3  specular = nom / denom;
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    float NdotL = max(dot(N, L), 0.0);
+    return (kD * albedo / PI + specular) * radiance * NdotL;
+}
+
+vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir)
+{
+    vec3 N = normal;
+    vec3 V = normalize(viewDir);
+    vec3 dir = mat3(viewMatrix) * normalize(vec3(1.0, -1.0, 1.0));
+    vec3 L = normalize(dir);
+    vec3 H = normalize(V + L);
+    float len = length(dir);
+    float attenuation = 1.0 / (len * len);
+    vec3 radiance = vec3(7.5);
 
     // Fresnel reflectance at normal incidence
     vec3 F0 = mix(vec3(0.04), albedo, metallic);

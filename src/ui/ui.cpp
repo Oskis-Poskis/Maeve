@@ -23,7 +23,7 @@ namespace UI
     void Resize(int width, int height);
     void RecalcMenuWidths(Menu* targetmenu);
 
-    void DrawList(int xoffset, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient = false);
+    void DrawList(int xoffset, int yoffset, std::vector<std::string>* items, Menu &submenu, bool gradient = false);
     void DrawArrow(glm::vec2 TopRight, glm::vec2 BottomLeft, glm::vec3 color);
 
     std::unique_ptr<Shader> rectShader, gradientRectShader, frostedRectShader, circleShader, defocusShader, colorWheelShader;
@@ -80,8 +80,12 @@ namespace UI
          Menu statistics;
          Menu engine;
          Menu qk;
+         Menu debug;
+              Menu display;
 
-    bool inMenu = false;
+    std::vector<std::string> MN_DebugDisplayItems = { "None", "BVH", "Deferred", "Stats" };
+
+    bool inMenu       = false;
     bool grabbingMenu = false;
     int menuDepth = 0;
     float xoffset = 0;
@@ -197,13 +201,13 @@ namespace UI
 
         if (HasItems) {
             NumItems = Items->size();
-            DrawList(0, yoffset, *Items, *this, CenteredList);
+            DrawList(0, yoffset, Items, *this, CenteredList);
         }
         else {
             std::vector<std::string> items;
             for (Menu* obj : SubMenus) items.push_back(obj->Title);
             NumItems = items.size();
-            DrawList(0, yoffset, items, *this, CenteredList);
+            DrawList(0, yoffset, &items, *this, CenteredList);
         }
     }
 
@@ -222,20 +226,26 @@ namespace UI
 
         int mult = (Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) ? stepMultiplier : 1;
 
+        if (Input::KeyPressed(GLFW_KEY_ENTER))
+        {
+            if (SubMenus.size() > 0) activemenu = SubMenus[SelectedSubMenu];
+            else if (!Items->empty() && GetActiveColumn() != GetNumColumns()) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size() - 1);
+        }
+
         x_timer += Stats::GetDeltaTime();
         if (x_timer >= 1 / (5.0f * mult) || Input::KeyPressed(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_LEFT)) {
             x_timer = 0.0f;
 
             if (Input::KeyDown(GLFW_KEY_RIGHT) || Input::KeyPressed(GLFW_KEY_RIGHT))
             {
-                if (SubMenus.size() > 0) activemenu = SubMenus[SelectedSubMenu];
-                else if (Items && GetActiveColumn() != GetNumColumns()) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size() - 1);
+                if (!SubMenus.empty()) activemenu = SubMenus[SelectedSubMenu];
+                else if (!Items->empty() && GetActiveColumn() != GetNumColumns()) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size() - 1);
             }
             if ((Input::KeyDown(GLFW_KEY_LEFT) || Input::KeyPressed(GLFW_KEY_LEFT)) && !IsTopLevel)
             {
-                if ((!Items) || (Items && SelectedSubMenu < MaxItemsUntilWrap)) activemenu = parent;
+                if ((!Items) || (!Items->empty() && SelectedSubMenu < MaxItemsUntilWrap)) activemenu = parent;
                 else if (Items && SelectedSubMenu >= MaxItemsUntilWrap) SelectedSubMenu = WrapIndex(SelectedSubMenu, Items->size(), true);
-            }   
+            }
         }
 
         y_timer += Stats::GetDeltaTime();
@@ -244,13 +254,13 @@ namespace UI
 
             if (Input::KeyDown(GLFW_KEY_UP))
             {
-                if (SubMenus.size() > 0) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
+                if (!SubMenus.empty()) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
                 else if (Items) SelectedSubMenu = glm::clamp(SelectedSubMenu - 1, 0, NumSubMenus - 1);
                 // && ((SelectedSubMenu) % MaxItemsUntilWrap) != 0
             }
             if (Input::KeyDown(GLFW_KEY_DOWN))
             {
-                if (SubMenus.size() > 0) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
+                if (!SubMenus.empty()) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
                 else if (Items) SelectedSubMenu = glm::clamp(SelectedSubMenu + 1, 0, NumSubMenus - 1);
                 // Items && ((SelectedSubMenu + 1) % MaxItemsUntilWrap) != 0
             }
@@ -285,7 +295,6 @@ namespace UI
         Title = MenuTitle;
         ThemeColor = ThemeCol;
         MenuWidth = Text::CalculateTextWidth("Scene Manager", ItemTextScaling) + ItemPaddingXPX * 2;
-        Items = nullptr;
     }
 
     void Menu::AddSubMenu(Menu* menu)
@@ -294,31 +303,27 @@ namespace UI
         SubMenus.push_back(menu);
     }
 
-    void DrawList(int xoffset_, int yoffset, std::vector<std::string> items, Menu &submenu, bool gradient)
+    void DrawList(int xoffset_, int yoffset, std::vector<std::string>* items, Menu &submenu, bool gradient)
     {
         int vis_below_above = 4;
         int xoffset = xoffset_ - (submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap) * submenu.MenuWidth;
 
-        // Background
-        if (submenu.BGopacity > 0.0f)
-        {
-            if (submenu.HasHeaderBar)
-            {
-                float headerYOffset = submenu.HiearchyView ? glm::min(vis_below_above * itemHeightPX, yoffset) : yoffset;
-
-                DrawRect(glm::vec2(left_edge, top_edge + headerYOffset),
-                        submenu.MenuWidth, titleHeight, submenu.ThemeColor, submenu.BGopacity);
-            }
-        }
-
         // Frosted Background
         if (submenu.FrostedBG)
         {
-            glm::vec2 bottomLeft = { left_edge, top_edge - titleHeight - itemHeightPX * items.size() + yoffset };
+            glm::vec2 bottomLeft = { left_edge, top_edge - titleHeight - itemHeightPX * items->size() + yoffset };
             glm::vec2 topRight   = { right_edge, top_edge + yoffset };
 
             DrawRect(topRight + (float)OutlineWidth, bottomLeft - (float)OutlineWidth, OutlineColor);
             DrawRectBlurred(topRight, bottomLeft, glm::vec3(0.6f));
+        }
+
+        if (submenu.HasHeaderBar)
+        {
+            float headerYOffset = submenu.HiearchyView ? glm::min(vis_below_above * itemHeightPX, yoffset) : yoffset;
+
+            DrawRect(glm::vec2(left_edge, top_edge + headerYOffset),
+                     submenu.MenuWidth, titleHeight, submenu.ThemeColor);
         }
 
         // Title
@@ -336,7 +341,7 @@ namespace UI
         int maxVisibleColumns = 7;
         int selectedColumn = submenu.SelectedSubMenu / submenu.MaxItemsUntilWrap;
         int halfVisibleColumns = maxVisibleColumns / 2;
-        int numColumns = items.size() / submenu.MaxItemsUntilWrap;
+        int numColumns = items->size() / submenu.MaxItemsUntilWrap;
 
         // Calculate min and max visible columns based on selection
         int minVisibleColumn = selectedColumn - halfVisibleColumns;
@@ -345,8 +350,7 @@ namespace UI
         // Clamp to 0 to avoid negative indices
         minVisibleColumn = glm::max(0, minVisibleColumn);
 
-        // Now in your loop:
-        for (int i = 0; i < items.size(); i++)
+        for (int i = 0; i < items->size(); i++)
         {
             int column = i / submenu.MaxItemsUntilWrap;
             int row    = i % submenu.MaxItemsUntilWrap;
@@ -379,7 +383,7 @@ namespace UI
 
                         if (i == submenu.SelectedSubMenu + vis_below_above && submenu.SelectedSubMenu >= vis_below_above)
                         {
-                            Text::Render(std::to_string(items.size() - i) + "...",
+                            Text::Render(std::to_string(items->size() - i) + "...",
                                         centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoffset,
                                         top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
                                         ItemTextScaling, ItemTextInactive);
@@ -404,7 +408,7 @@ namespace UI
                                 && (i != submenu.SelectedSubMenu + vis_below_above || submenu.SelectedSubMenu < vis_below_above));
                 if (visible)
                 {
-                    Text::Render(items[i],
+                    Text::Render((*items)[i],
                                 centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoff,
                                 top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
                                 ItemTextScaling, textColor);
@@ -412,7 +416,7 @@ namespace UI
             }
             else
             {
-                Text::Render(items[i],
+                Text::Render((*items)[i],
                             centerX - submenu.MenuWidth / 2 + ItemPaddingXPX + xoff,
                             top_edge - titleHeight - itemHeightPX * (yoff + 1) + yoffset + ItemPaddingYPX,
                             ItemTextScaling, textColor);
@@ -759,6 +763,18 @@ namespace UI
             RecalcMenuWidths(menu);
         }
     }
+    
+    void MainMenuInput()
+    {
+        for (int key = GLFW_KEY_1; key <= GLFW_KEY_6; ++key) {
+            if (Input::KeyPressed(key))
+            {
+                int submenuIndex = key - GLFW_KEY_1;
+                mainMenu.SelectedSubMenu = submenuIndex;
+                // activemenu = mainMenu.SubMenus[submenuIndex];
+            }
+        }
+    }
 
     void MeshesInput()
     {
@@ -810,6 +826,21 @@ namespace UI
         }
     }
 
+    void DisplayInput()
+    {
+        if (Input::KeyPressed(GLFW_KEY_ENTER))
+            Engine::debugMode = static_cast<Engine::DebugMode>(display.SelectedSubMenu + 1);
+
+        for (int key = GLFW_KEY_1; key <= GLFW_KEY_4; ++key) {
+            if (Input::KeyPressed(key))
+            {
+                int submenuIndex = key - GLFW_KEY_1;
+                display.SelectedSubMenu = submenuIndex;
+                Engine::debugMode = static_cast<Engine::DebugMode>(submenuIndex + 1);
+            }
+        }
+    }
+
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
@@ -838,10 +869,11 @@ namespace UI
         glBindVertexArray(0);
 
         mainMenu.Initialize("hotbox", MainMenuColor);
-        mainMenu.IsTopLevel = true;
-        mainMenu.BGopacity = 0.0f;
-        mainMenu.FrostedBG = true;
+        mainMenu.IsTopLevel   = true;
+        mainMenu.BGopacity    = 0.0f;
+        mainMenu.FrostedBG    = true;
         mainMenu.HasHeaderBar = false;
+        mainMenu.ExtraInput   = MainMenuInput;
         {
             sceneManager.Initialize("Scene Manager", SecondaryColor, &SM::SceneNodeNames);
             sceneManager.CenteredList = true;
@@ -850,33 +882,44 @@ namespace UI
             assetManager.Initialize("Asset Manager", TertieryColor);
             assetManager.ExtraInput = AssetManagerInput;
             {
-                meshes.Initialize("Meshes    (1)", SecondaryColor, &AM::MeshNames);
+                meshes.Initialize("Meshes    (1)", TertieryColor, &AM::MeshNames);
                 meshes.ExtraInput = MeshesInput;
 
-                lights.Initialize("Lights    (2)", SecondaryColor, &AM::LightNames);
+                lights.Initialize("Lights    (2)", TertieryColor, &AM::LightNames);
                 lights.ExtraInput = LightsInput;
 
-                materials.Initialize("Materials (3)", SecondaryColor);
+                materials.Initialize("Materials (3)", TertieryColor);
 
-                textures.Initialize("Textures  (4)", SecondaryColor);
+                textures.Initialize("Textures  (4)", TertieryColor);
             }
             assetManager.AddSubMenu(&meshes);
             assetManager.AddSubMenu(&lights);
             assetManager.AddSubMenu(&materials);
             assetManager.AddSubMenu(&textures);
+            assetManager.BGopacity    = 0.0f;
+            assetManager.FrostedBG    = true;
+            assetManager.HasHeaderBar = false;
         
             statistics.Initialize("Statistics", SecondaryColor);
             engine.Initialize("Engine",         SecondaryColor);
             qk.Initialize("Qk",                 SecondaryColor);
+
+            debug.Initialize("Debug",           SecondaryColor);
+            {
+                display.Initialize("Display", SecondaryColor, &MN_DebugDisplayItems);
+                display.ExtraInput = DisplayInput;
+            }
+            debug.AddSubMenu(&display);
         }
         
         mainMenu.AddSubMenu(&sceneManager);
         mainMenu.AddSubMenu(&assetManager);
         mainMenu.AddSubMenu(&statistics);
         mainMenu.AddSubMenu(&engine);
+        mainMenu.AddSubMenu(&debug);
         mainMenu.AddSubMenu(&qk);
 
-        activemenu = &mainMenu;
+        activemenu   = &mainMenu;
         toplevelmenu = &mainMenu;
     }
 

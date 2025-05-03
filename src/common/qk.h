@@ -49,7 +49,9 @@ namespace qk
     double StopTimer();
 
     void BeginGPUTimer(const std::string& stage_name);
-    std::string EndGPUTimer(const std::string& stageName);
+    float EndGPUTimer(const std::string& stageName);
+
+    std::string LabelWithPaddedNumber(const std::string& label, float timing, int labelWidth = 14, int numWidth = 7);
 
     inline unsigned int bvhVisSSBO;
     inline std::vector<glm::mat4> bvhVisMatrices;

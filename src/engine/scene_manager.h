@@ -126,12 +126,13 @@ namespace SM
     void AddNode(Object* Object);
     void AddNode(Light* Object);
     Object* GetObjectFromNode(SceneNode* node);
-    Light* GetLightFromNode(SceneNode* node);
+    Light*  GetLightFromNode(SceneNode* node);
 
     void Initialize();
 
     void SelectSceneNode(int Index);
     int  GetSelectedIndex();
+    void FocusSelection(float screenPercentage = 0.25f);
 
     inline std::vector<SceneNode*> SceneNodes;
     inline std::vector<std::string> SceneNodeNames;

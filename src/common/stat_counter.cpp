@@ -51,11 +51,11 @@ namespace Stats
             avgfps = alpha * avgfps + (1.0f - alpha) * GetFPS();
             avgms  = alpha * avgms  + (1.0f - alpha) * GetMS();
 
-            FPS = std::format("{:<4} {:>7.2f}", "FPS:", avgfps);
-            ms  = std::format("{:<4} {:>7.2f}", "ms:",  avgms);
+            FPS = qk::LabelWithPaddedNumber("FPS: ", avgfps, 5, 7);
+            ms  = qk::LabelWithPaddedNumber("ms: ",  avgms,  5, 7);
         }
 
-        std::string meshes = std::format<int>("Meshes in memory: {} ({} triangles)", AM::Meshes.size(), qk::FmtK(AM::UniqueMeshTriCount));
+        std::string meshes  = std::format<int>("Meshes in memory: {} ({} triangles)", AM::Meshes.size(), qk::FmtK(AM::UniqueMeshTriCount));
         std::string objects = std::format<int>("Nodes in scene: {} ({} triangles)", SM::SceneNodes.size(), qk::FmtK(SM::ObjectsTriCount));
         
         glDisable(GL_DEPTH_TEST);

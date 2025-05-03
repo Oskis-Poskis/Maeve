@@ -449,12 +449,14 @@ namespace ObjectManipulation
     void DrawAxisText()
     {
         if ((translating || rotating || scaling) && Input::GetInputContext() == Input::Transforming) {
+            glDisable(GL_DEPTH_TEST);
             Text::RenderCenteredBG(axisFromMask(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 40, 0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
             if (rotating) {
                 std::string rotation = (typedAxisValue.size() > 0 ? typedAxisValue : std::format("{:.{}f}", angle, 2));
                 Text::RenderCenteredBG(rotation, Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y - 60,
                                        0.5f, glm::vec3(0.95f), glm::vec3(0.0f));
             }
+            glEnable(GL_DEPTH_TEST);
         }
     }
 

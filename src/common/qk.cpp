@@ -34,6 +34,8 @@ namespace qk
     {
         InitializeQuery("GBuffers");
         InitializeQuery("Shading");
+        InitializeQuery("Post Process");
+        InitializeQuery("UI");
 
         glGenVertexArrays(1, &line_vao);
         glGenBuffers(1, &line_vbo);
@@ -487,9 +489,9 @@ namespace qk
         }
     }
 
-    std::string EndGPUTimer(const std::string& stageName)
+    float EndGPUTimer(const std::string& stageName)
     {
-        if (!queryActive[stageName]) return "";  // Return empty if no query is active for this stage
+        if (!queryActive[stageName]) return 0.0f;  // Return empty if no query is active for this stage
 
         glEndQuery(GL_TIME_ELAPSED);
 
@@ -508,14 +510,19 @@ namespace qk
 
             double avg = std::accumulate(gpuTimings.begin(), gpuTimings.end(), 0.0) / gpuTimings.size();
 
-            std::stringstream result;
-            result << "Stage \"" << stageName << "\" GPU time: " << std::fixed << std::setprecision(2) << ms << " ms\n";
-            // result << "Average GPU time for \"" << stageName << "\": " << std::fixed << std::setprecision(2) << avg << " ms\n";
-
             queryActive[stageName] = false;  // Mark query as inactive after finishing the measurement
-            return result.str();
+            return ms;
         }
 
-        return "";  // Return empty if the result is not available yet
+        return 0.0f;  // Return 0.0f if the result is not available yet
+    }
+
+    std::string LabelWithPaddedNumber(const std::string& label, float timing, int labelWidth, int numWidth)
+    {
+        std::ostringstream oss;
+        oss << std::left << std::setw(labelWidth) << label
+            << std::right << std::setw(numWidth) << std::fixed << std::setprecision(2)
+            << timing << " ms";
+        return oss.str();
     }
 }

@@ -145,6 +145,11 @@ namespace Engine
         Quit();
     }
 
+    float GBuffers_Timing;
+    float Shading_Timing;
+    float PostProcess_Timing;
+    float UI_Timing;
+    
     const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     void NewFrame()
     {
@@ -154,16 +159,16 @@ namespace Engine
         if (Input::KeyDown(GLFW_KEY_SPACE) && Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
         if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL) && Input::KeyPressed(GLFW_KEY_Q)) Quit();
-        for (int i = 0; i <= 9; ++i) {
-            if (Input::KeyPressed(GLFW_KEY_0 + i) && Input::GetInputContext() == Input::Game) {
-                debugMode = static_cast<DebugMode>(i);
-                break;
-            }
-        }
+        // for (int i = 0; i <= 9; ++i) {
+        //     if (Input::KeyPressed(GLFW_KEY_0 + i) && Input::GetInputContext() == Input::Game) {
+        //         debugMode = static_cast<DebugMode>(i);
+        //         break;
+        //     }
+        // }
 
+        /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_F)) SM::FocusSelection();
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
-        /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_HOME))
-                              for (const auto& func : editorReloadShaderEvents) { func(); }
+        /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_HOME)) for (const auto& func : editorReloadShaderEvents) { func(); }
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
         AM::ViewMat4 = AM::EditorCam.GetViewMatrix();
@@ -175,8 +180,10 @@ namespace Engine
 
         qk::BeginGPUTimer("GBuffers");
         SM::DrawGBuffers();
-        std::string timing = qk::EndGPUTimer("GBuffers");
-        if (!timing.empty()) std::cout <<  timing;
+        float timing = qk::EndGPUTimer("GBuffers");
+        if (timing != 0.0f) {
+            GBuffers_Timing = timing;
+        }
         /* EDITOR ONLY */ Deferred::DrawMask(); // R8 texture used for outline generation
         // -------------------------------------------
 
@@ -184,8 +191,10 @@ namespace Engine
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         qk::BeginGPUTimer("Shading");
         Deferred::DoShading();
-        std::string timing2 = qk::EndGPUTimer("Shading");
-        if (!timing2.empty()) std::cout <<  timing2;
+        float timing2 = qk::EndGPUTimer("Shading");
+        if (timing2 != 0.0f) {
+            Shading_Timing = timing2;
+        }
         /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvents) { func(); }
         // -------------------------------------------
 
@@ -195,13 +204,33 @@ namespace Engine
 
         glEnable(GL_BLEND);
         glDisable(GL_DEPTH_TEST);
+        qk::BeginGPUTimer("Post Process");
         Deferred::DoPostProcessAndDisplay();
+        float timing3 = qk::EndGPUTimer("Post Process");
+        if (timing3 != 0.0f) {
+            PostProcess_Timing = timing3;
+        }
         /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred) Deferred::VisualizeGBuffers();
         /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvents) { func(); }
+
+        qk::BeginGPUTimer("UI");
         /* EDITOR ONLY */ UI::Render();
+        float timing4 = qk::EndGPUTimer("UI");
+        if (timing4 != 0.0f) {
+            UI_Timing = timing4;
+        }
 
         Stats::Count(glfwGetTime());
-        Stats::DrawStats();
+        if (debugMode == DebugMode::Stats) {
+            int y = Engine::GetWindowSize().y / 2;
+            Text::Render(qk::LabelWithPaddedNumber("GBuffers:", GBuffers_Timing, 15, 5),        15, y, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),          15, y - 26, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5), 15, y - 26 * 2, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                    15, y - 26 * 3, 0.5f);
+
+            Stats::DrawStats();
+        }
+
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         // -------------------------------------------
