@@ -130,9 +130,8 @@ namespace AM
     inline std::vector<std::string> MeshNames;
     inline std::vector<std::string> LightNames = { "Point Light" };
 
-    inline std::unique_ptr<Shader> S_GBuffers;
     inline std::unique_ptr<Shader> S_SingleColor;
-    inline std::unique_ptr<Shader> S_Lambert;
+    // inline std::unique_ptr<Shader> S_Lambert;
     inline std::unique_ptr<Shader> S_BVHVis;
     inline std::unique_ptr<Shader> S_BVHVisInstanced;
 

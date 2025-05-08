@@ -97,7 +97,7 @@ namespace Engine
             glfwSetFramebufferSizeCallback(window, windowResized);
             glfwSetWindowMaximizeCallback(window, windowMaximized);
 
-            glfwSetWindowAttrib(window, GLFW_DECORATED, false);
+            // glfwSetWindowAttrib(window, GLFW_DECORATED, false);
             glfwSwapInterval(1);
 
             // Center Window
@@ -137,6 +137,8 @@ namespace Engine
         qk::Initialize();
 
         windowResized(window, windowWidth, windowHeight);
+
+        debugMode = DebugMode::ShadowMap;
     }
 
     void Run()
@@ -145,12 +147,12 @@ namespace Engine
         Quit();
     }
 
+    float GShadows_Timing;
     float GBuffers_Timing;
     float Shading_Timing;
     float PostProcess_Timing;
     float UI_Timing;
     
-    const GLenum buffers[]{ GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
     void NewFrame()
     {
         glfwPollEvents();
@@ -174,16 +176,21 @@ namespace Engine
         AM::ViewMat4 = AM::EditorCam.GetViewMatrix();
 
         // Draw GBuffers --------------------------
-        glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetFBO());
-        glDrawBuffers(4, buffers);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        qk::BeginGPUTimer("GShadows");
+        Deferred::DrawDirShadowMapDepth();
+        float timing0 = qk::EndGPUTimer("GShadows");
+        if (timing0 != 0.0f) {
+            GShadows_Timing = timing0;
+        }
 
         qk::BeginGPUTimer("GBuffers");
-        SM::DrawGBuffers();
-        float timing = qk::EndGPUTimer("GBuffers");
-        if (timing != 0.0f) {
-            GBuffers_Timing = timing;
+        Deferred::DrawGBuffers();
+        float timing1 = qk::EndGPUTimer("GBuffers");
+        if (timing1 != 0.0f) {
+            GBuffers_Timing = timing1;
         }
+
         /* EDITOR ONLY */ Deferred::DrawMask(); // R8 texture used for outline generation
         // -------------------------------------------
 
@@ -210,7 +217,8 @@ namespace Engine
         if (timing3 != 0.0f) {
             PostProcess_Timing = timing3;
         }
-        /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred) Deferred::VisualizeGBuffers();
+        /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred)  Deferred::VisualizeGBuffers();
+        /* EDITOR ONLY */ if (debugMode == DebugMode::ShadowMap) Deferred::VisualizeShadowMap();
         /* EDITOR ONLY */ for (const auto& func : editorDrawUIEvents) { func(); }
 
         qk::BeginGPUTimer("UI");
@@ -223,10 +231,11 @@ namespace Engine
         Stats::Count(glfwGetTime());
         if (debugMode == DebugMode::Stats) {
             int y = Engine::GetWindowSize().y / 2;
-            Text::Render(qk::LabelWithPaddedNumber("GBuffers:", GBuffers_Timing, 15, 5),        15, y, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),          15, y - 26, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5), 15, y - 26 * 2, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                    15, y - 26 * 3, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Shadow Depth:", GShadows_Timing, 15, 5),    15, y - 26 * 0, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("GBuffers:", GBuffers_Timing, 15, 5),        15, y - 26 * 1, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),          15, y - 26 * 2, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5), 15, y - 26 * 3, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                    15, y - 26 * 4, 0.5f);
 
             Stats::DrawStats();
         }
@@ -240,7 +249,7 @@ namespace Engine
 
     void Quit()
     {
-        glDeleteFramebuffers(1, &Deferred::GetFBO());
+        glDeleteFramebuffers(1, &Deferred::GetDeferredFBO());
         glfwTerminate();
         exit(0);
     }
@@ -260,7 +269,12 @@ namespace Engine
     GLFWwindow* WindowPtr() { return window; }
     glm::ivec2  GetWindowSize()    { return glm::ivec2(windowWidth, windowHeight); }
     glm::ivec2  GetMonitorSize()   { return glm::ivec2(monitorWidth, monitorHeight); }
-    
+
+    float GetWindowAspect()
+    {
+        return (float)windowWidth / windowHeight;
+    }
+
     void errorCallback(int error, const char* description) { fprintf(stderr, "Error: %s\n", description); }
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) { }
 }

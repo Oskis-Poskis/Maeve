@@ -83,7 +83,7 @@ namespace UI
          Menu debug;
               Menu display;
 
-    std::vector<std::string> MN_DebugDisplayItems = { "None", "BVH", "Deferred", "Stats" };
+    std::vector<std::string> MN_DebugDisplayItems = { "None", "BVH", "Deferred", "Stats", "Shadow Map" };
 
     bool inMenu       = false;
     bool grabbingMenu = false;
@@ -499,7 +499,7 @@ namespace UI
         };
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, Deferred::GetTexture(Deferred::GShaded));
+        glBindTexture(GL_TEXTURE_2D, Deferred::GBuffers[Deferred::GShaded]);
         frostedRectShader->Use();
         frostedRectShader->SetInt("sceneTexture", 0);
         frostedRectShader->SetVector2("textureSize", { Engine::GetWindowSize().x, Engine::GetWindowSize().y });
@@ -594,7 +594,7 @@ namespace UI
             isRotating = true;
 
             glm::vec2 neutral = mouse_pos - glm::vec2(Center.x, Center.y);
-            angle = -std::atan2f(neutral.x, neutral.y) + M_PI / 2.0f;
+            angle = -std::atan2f(neutral.x, neutral.y) + std::numbers::pi / 2.0f;
         }
         else isRotating = false;
 
@@ -831,7 +831,7 @@ namespace UI
         if (Input::KeyPressed(GLFW_KEY_ENTER))
             Engine::debugMode = static_cast<Engine::DebugMode>(display.SelectedSubMenu + 1);
 
-        for (int key = GLFW_KEY_1; key <= GLFW_KEY_4; ++key) {
+        for (int key = GLFW_KEY_1; key <= GLFW_KEY_5; ++key) {
             if (Input::KeyPressed(key))
             {
                 int submenuIndex = key - GLFW_KEY_1;

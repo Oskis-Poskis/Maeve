@@ -27,12 +27,13 @@ namespace ObjectManipulation
 
     bool rotating    = false;
     float startAngle = 0.0f;
-    float rs_delta    = 0.0f;
+    float rs_delta   = 0.0f;
     float angle      = 0.0f;
     glm::vec3 previousRot;
 
     bool scaling = false;
     glm::vec3 previousScale;
+    float cursor_dist = 0.0f;
 
     std::string typedAxisValue;
 
@@ -234,14 +235,25 @@ namespace ObjectManipulation
 
                 axisMask = { 1, 1, 1, 1 };
 
-                rotating    = false;
-                translating = false;
-                scaling     = !scaling;
-                previousPos = object->GetPosition();
-                previousRot = object->GetRotationEuler();
+                rotating      = false;
+                translating   = false;
+                scaling       = !scaling;
+                previousPos   = object->GetPosition();
+                previousRot   = object->GetRotationEuler();
                 previousScale = object->GetScale();
 
+                glm::vec2 startPosScreen = qk::WorldToScreen(previousPos);
+                mx  = startPosScreen.x;
+                my  = Engine::GetWindowSize().y - startPosScreen.y;
+                mx_ = startPosScreen.x;
+                my_ = Engine::GetWindowSize().y - startPosScreen.y;
+                
                 glm::vec2 screen_pos = qk::WorldToScreen(previousPos);
+                glm::vec2 mouse_pos  = glm::vec2(Input::GetMouseX(), Engine::GetWindowSize().y - Input::GetMouseY());
+                glm::vec2 neutral = mouse_pos - screen_pos;
+                cursor_dist = glm::length(neutral);
+
+                glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
                 rs_delta = 0.0f;
 
@@ -283,13 +295,6 @@ namespace ObjectManipulation
 
                 if (axisCount == 3) angle = startAngle - glm::degrees(std::atan2f(neutral.x, neutral.y));
                 else {
-                    // Move cursor if its reaching right edge
-                    if (Input::GetMouseX() >= (float)Engine::GetWindowSize().x - 5)
-                        glfwSetCursorPos(Engine::WindowPtr(), 10, Input::GetMouseY());
-                    // Move cursor if its at the left
-                    else if (Input::GetMouseX() <= 5)
-                        glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
-
                     typedAxisValue += Input::GetTypedCharacters(true);
                     if (typedAxisValue.size() > 0) {
                         if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !typedAxisValue.empty()) typedAxisValue.pop_back();
@@ -343,29 +348,20 @@ namespace ObjectManipulation
             {
                 SelectAxes();
 
-                rs_delta += Input::GetMouseDeltaX();
+                glm::vec2 screen_pos = qk::WorldToScreen(previousPos);
+                glm::vec2 mouse_pos  = glm::vec2(Input::GetMouseX(), Engine::GetWindowSize().y - Input::GetMouseY());
+                glm::vec2 neutral    = mouse_pos - screen_pos;
+                
                 float scale_factor = 1.0f;
-                scale_factor += (rs_delta / Engine::GetWindowSize().y) * 4.0f;
+                scale_factor += ((glm::length(neutral) - cursor_dist) / Engine::GetWindowSize().y) * 10.0f;
 
-                // Move cursor if its reaching right
-                if (Input::GetMouseX() >= (float)Engine::GetWindowSize().x - 5) {
-                    glfwSetCursorPos(Engine::WindowPtr(), 10, Input::GetMouseY());
-                    rs_delta += (float)Engine::GetWindowSize().x;
-                }
-                // Move cursor if its at the left
-                else if (Input::GetMouseX() <= 5) {
-                    glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
-                    rs_delta -= (float)Engine::GetWindowSize().x;
-                }
-
-                int axisCount = int(axisMask[0]) + int(axisMask[1]) + int(axisMask[2]);
                 glm::vec3 axis;
                 glm::vec3 new_scale;
 
                 new_scale = glm::vec3(
-                    axisMask[0] ? previousScale.x * scale_factor : previousScale.x,
-                    axisMask[1] ? previousScale.y * scale_factor : previousScale.y,
-                    axisMask[2] ? previousScale.z * scale_factor : previousScale.z
+                    axisMask[0] ? previousScale.x * (scale_factor) : previousScale.x,
+                    axisMask[1] ? previousScale.y * (scale_factor) : previousScale.y,
+                    axisMask[2] ? previousScale.z * (scale_factor) : previousScale.z
                 );
 
                 SM::Object* object = dynamic_cast<SM::Object*>(node);
@@ -379,6 +375,7 @@ namespace ObjectManipulation
                     axisMask = { 1, 1, 1, 0 };
                     Input::SetInputContext(Input::Game);
                     Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
+                    glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                 }
                 else if (Input::KeyPressed(GLFW_KEY_ESCAPE))
                 {
@@ -387,7 +384,116 @@ namespace ObjectManipulation
                     rs_delta  = 0.0f;
                     object->SetScale(previousScale);
                     Input::SetInputContext(Input::Game);
+                    glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
                 }
+
+                // v2 --------------------------------------------
+                // SelectAxes();
+                
+                // glm::vec3 new_scale = CalculatePointOnAxisOrPlane(previousPos, dist);
+                // SM::Object* object = dynamic_cast<SM::Object*>(node);
+
+                // new_scale = glm::vec3(
+                //     axisMask[0] ? new_scale.x : previousScale.x,
+                //     axisMask[1] ? new_scale.y : previousScale.y,
+                //     axisMask[2] ? new_scale.z : previousScale.z
+                // );
+
+                // int axisCount = int(axisMask[0]) + int(axisMask[1]) + int(axisMask[2]);
+
+                // if (axisCount == 2 && !Input::KeyDown(GLFW_KEY_LEFT_CONTROL))
+                // {
+                //     float sum = 0.0f;
+                //     int count = 0;
+                //     if (axisMask[0]) { sum += new_scale.x; count++; }
+                //     if (axisMask[1]) { sum += new_scale.y; count++; }
+                //     if (axisMask[2]) { sum += new_scale.z; count++; }
+                //     float avg = sum / count;
+
+                //     if (axisMask[0]) new_scale.x = avg;
+                //     if (axisMask[1]) new_scale.y = avg;
+                //     if (axisMask[2]) new_scale.z = avg;
+                // }
+                // else if (axisCount == 2 && Input::KeyDown(GLFW_KEY_LEFT_CONTROL))
+                // {
+                //     new_scale = glm::vec3(
+                //         axisMask[0] ? new_scale.x : previousScale.x,
+                //         axisMask[1] ? new_scale.y : previousScale.y,
+                //         axisMask[2] ? new_scale.z : previousScale.z
+                //     );
+                // }
+                // else if (axisCount == 3)
+                // {
+                //     float avg = (new_scale.x + new_scale.y + new_scale.z) / 3.0f;
+                //     new_scale = glm::vec3(new_scale.x);
+                // }
+
+                // object->SetScale(new_scale);
+
+                // if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
+                //     AM::EditorCam.Turning ||
+                //     AM::EditorCam.Moving)
+                // {
+                //     scaling = false;
+                //     axisMask = { 1, 1, 1, 0 };
+                //     Input::SetInputContext(Input::Game);
+                //     Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
+                // }
+                // else if (Input::KeyPressed(GLFW_KEY_ESCAPE)) {
+                //     scaling = false;
+                //     axisMask = { 1, 1, 1, 0 };
+                //     node->SetPosition(previousPos);
+                //     Input::SetInputContext(Input::Game);
+                // }
+
+                // v1 --------------------------------------------
+                // SelectAxes();
+
+                // rs_delta += Input::GetMouseDeltaX();
+                // float scale_factor = 1.0f;
+                // scale_factor += (rs_delta / Engine::GetWindowSize().y) * 4.0f;
+
+                // // Move cursor if its reaching right
+                // if (Input::GetMouseX() >= (float)Engine::GetWindowSize().x - 5) {
+                //     glfwSetCursorPos(Engine::WindowPtr(), 10, Input::GetMouseY());
+                //     rs_delta += (float)Engine::GetWindowSize().x;
+                // }
+                // // Move cursor if its at the left
+                // else if (Input::GetMouseX() <= 5) {
+                //     glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x - 10, Input::GetMouseY());
+                //     rs_delta -= (float)Engine::GetWindowSize().x;
+                // }
+
+                // // int axisCount = int(axisMask[0]) + int(axisMask[1]) + int(axisMask[2]);
+                // glm::vec3 axis;
+                // glm::vec3 new_scale;
+
+                // new_scale = glm::vec3(
+                //     axisMask[0] ? previousScale.x * scale_factor : previousScale.x,
+                //     axisMask[1] ? previousScale.y * scale_factor : previousScale.y,
+                //     axisMask[2] ? previousScale.z * scale_factor : previousScale.z
+                // );
+
+                // SM::Object* object = dynamic_cast<SM::Object*>(node);
+                // object->SetScale(new_scale);
+
+                // if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_1) ||
+                //     AM::EditorCam.Turning ||
+                //     AM::EditorCam.Moving)
+                // {
+                //     scaling = false;
+                //     axisMask = { 1, 1, 1, 0 };
+                //     Input::SetInputContext(Input::Game);
+                //     Input::ConsumeMouseButton(GLFW_MOUSE_BUTTON_1);
+                // }
+                // else if (Input::KeyPressed(GLFW_KEY_ESCAPE))
+                // {
+                //     scaling = false;
+                //     axisMask = { 1, 1, 1, 0 };
+                //     rs_delta  = 0.0f;
+                //     object->SetScale(previousScale);
+                //     Input::SetInputContext(Input::Game);
+                // }
             }
         }
     }

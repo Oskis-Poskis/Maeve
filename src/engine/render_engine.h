@@ -8,10 +8,11 @@ struct GLFWwindow;
 namespace Engine
 {
     enum DebugMode {
-        None     = 1,
-        BVH      = 2,
-        Deferred = 3,
-        Stats  = 4
+        None      = 1,
+        BVH       = 2,
+        Deferred  = 3,
+        Stats     = 4,
+        ShadowMap = 5,
     };
     inline DebugMode debugMode = DebugMode::None;
     inline const char* DebugModeToString(DebugMode mode) {
@@ -20,6 +21,7 @@ namespace Engine
             case BVH:       return "BVH";
             case Deferred:  return "Deferred";
             case Stats:     return "Stats";
+            case ShadowMap: return "Shadow Map";
 
             default:   return "Unknown";
         }
@@ -29,6 +31,7 @@ namespace Engine
     GLFWwindow* WindowPtr();
     glm::ivec2 GetWindowSize();
     glm::ivec2 GetMonitorSize();
+    float GetWindowAspect();
     void ToggleFullscreen();
 
     void RegisterResizeCallback(const std::function<void(int, int)>& callback);

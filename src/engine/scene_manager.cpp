@@ -104,36 +104,6 @@ namespace SM
         }
     }
 
-    void DrawGBuffers()
-    {
-        AM::S_GBuffers->Use();
-        AM::S_GBuffers->SetMatrix4("projection", AM::ProjMat4);
-        AM::S_GBuffers->SetMatrix4("view", AM::ViewMat4);
-
-        for (auto const& mesh : AM::Meshes)
-        {
-            int numElements = mesh.second.TriangleCount * 3;
-            glBindVertexArray(mesh.second.VAO);
-
-            // todo -> unordered map with key as material names, value is list of objects with that material
-            int index = 0;
-            for (auto &node : SM::SceneNodes)
-            {
-                if (node->GetType() == NodeType::Object_)
-                {
-                    Object* object = dynamic_cast<Object*>(node);
-                    if (object->GetMeshID() == mesh.first)
-                    {
-                        AM::S_GBuffers->SetMatrix4("model", object->GetModelMatrix());
-                        if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
-                        else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
-                    }
-                    index++;
-                }
-            }
-        }
-    }
-
     Object* GetObjectFromNode(SceneNode* node)
     {
         if (auto object = dynamic_cast<Object*>(node)) {

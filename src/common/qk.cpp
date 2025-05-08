@@ -32,6 +32,7 @@ namespace qk
     unsigned int tri_vao,  tri_vbo;
     void Initialize()
     {
+        InitializeQuery("GShadows");
         InitializeQuery("GBuffers");
         InitializeQuery("Shading");
         InitializeQuery("Post Process");
@@ -364,7 +365,7 @@ namespace qk
             glLineWidth(lineWidth);
         }
 
-        glBindVertexArray(AM::Meshes.at("cube").VAO);
+        glBindVertexArray(AM::Meshes.at("MV::CUBE").VAO);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -383,7 +384,7 @@ namespace qk
             glLineWidth(lineWidth);
         }
 
-        glBindVertexArray(AM::Meshes.at("cube").VAO);
+        glBindVertexArray(AM::Meshes.at("MV::CUBE").VAO);
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

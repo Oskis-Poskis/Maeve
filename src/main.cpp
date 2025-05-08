@@ -9,18 +9,25 @@ int main()
 {
     Engine::Initialize();
  
-    // AM::IO::LoadObj("res/objs/suzanne_smooth.obj", "loaded_1");
-    // AM::IO::LoadObj("res/objs/suzanne.obj",        "loaded_2");
-    // AM::IO::LoadObj("res/objs/sphere.obj",         "loaded_3");
-    // AM::IO::LoadObj("res/objs/cube.obj",           "loaded_4");
-    // AM::IO::LoadObj("res/objs/teapot.obj",         "loaded_5");
-    AM::IO::LoadObj("res/objs/xyzrgb_dragon.obj",  "Dragon");
-    SM::Object* dragon = new SM::Object("Dragon", "Dragon");
-    SM::Object* plane  = new SM::Object("Plane", "plane");
-    plane->Rotate({90, 0, 0});
-    plane->SetScale({5, 5, 5});
-    SM::AddNode(dragon);
-    SM::AddNode(plane);
+    AM::IO::LoadObj("res/objs/suzanne_smooth.obj", "loaded_1");
+    AM::IO::LoadObj("res/objs/suzanne.obj",        "loaded_2");
+    AM::IO::LoadObj("res/objs/sphere.obj",         "loaded_3");
+    AM::IO::LoadObj("res/objs/cube.obj",           "loaded_4");
+    AM::IO::LoadObj("res/objs/teapot.obj",         "loaded_5");
+    // AM::IO::LoadObj("res/objs/xyzrgb_dragon.obj",  "dragon");
+
+    SM::Object* suzanne = new SM::Object("Suzanne", "loaded_1");
+    suzanne->SetPosition({0, 0, 3});
+    
+    SM::Object* floor  = new SM::Object("Floor", "loaded_4");
+    floor->SetScale({7.5f, 7.5f, 0.1f});
+
+    SM::Object* cube  = new SM::Object("Cube", "loaded_4");
+    cube->SetPosition({2.0f, 0.0f, 0.7f});
+    
+    SM::AddNode(suzanne);
+    SM::AddNode(floor);
+    SM::AddNode(cube);
 
     // std::vector<std::string> meshIDs = { "loaded_1", "loaded_2", "loaded_3", "loaded_4", "loaded_5" };
 
@@ -81,7 +88,7 @@ int main()
     // add -o "MyObject" -m "Mesh1"
     // add -o "MyObject" -m "Mesh1" -p vec3(0.0, 0.0, 0.0)
 
-    PC::RunTest("add -o \"MyObject\" -m \"Mesh1\" -p vec3(1.0, 2.0, 3.0)");
+    // PC::RunTest("add -o \"MyObject\" -m \"Mesh1\" -p vec3(1.0, 2.0, 3.0)");
 
     Engine::Run();
 }

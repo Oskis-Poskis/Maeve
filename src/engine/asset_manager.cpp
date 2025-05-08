@@ -35,11 +35,10 @@ namespace AM
         Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
 
         AddMeshByData(AM::Presets::CubeOutlineVtxData, AM::Presets::CubeOutlineIndices, "MV::CUBEOUTLINE");
-        AddMeshByData(AM::Presets::PlaneVtxData, AM::Presets::PlaneIndices, "plane");
-        AddMeshByData(AM::Presets::CubeVtxData, AM::Presets::CubeIndices, "cube");
-        AddMeshByData(std::vector<VtxData> {}, "empty");
+        AddMeshByData(std::vector<VtxData> {}, "MV::EMPTY");
+        AddMeshByData(AM::Presets::PlaneVtxData, AM::Presets::PlaneIndices, "MV::PLANE");
+        AddMeshByData(AM::Presets::CubeVtxData,  AM::Presets::CubeIndices,  "MV::CUBE");
         
-        S_GBuffers        = std::make_unique<Shader>("/res/shaders/deferred/draw_gbuffers");
         S_SingleColor     = std::make_unique<Shader>("/res/shaders/editor/singlecolor");
         S_BVHVis          = std::make_unique<Shader>("/res/shaders/editor/bvh_vis");
         S_BVHVisInstanced = std::make_unique<Shader>("/res/shaders/editor/bvh_vis_instanced");
@@ -82,9 +81,9 @@ namespace AM
         bvh.Build(VertexData);
         std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
 
-        qk::StartTimer();
-        /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
-        std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
+        // qk::StartTimer();
+        // /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
+        // std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
     }
 
     Mesh::Mesh(const std::vector<VtxData> &VertexData)
@@ -115,9 +114,9 @@ namespace AM
         bvh.Build(VertexData);
         std::cout << "[:] Built bvh for " << qk::FmtK(int(VertexData.size()) / 3) << " triangles in " << qk::StopTimer() << " seconds\n";
 
-        qk::StartTimer();
-        /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
-        std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
+        // qk::StartTimer();
+        // /* EDITOR ONLY */ qk::PrepareBVHVis(bvh.bvhNodes);
+        // std::cout << "[:] Built bvh debug in " << qk::StopTimer() << " seconds\n";
     }
 
     void AddMeshByData(const std::vector<VtxData>& VertexData, std::string Name)
@@ -463,7 +462,6 @@ namespace AM
 
     void ReloadShaders()
     {
-        S_GBuffers->Reload();
         S_SingleColor->Reload();
         S_BVHVis->Reload();
         S_BVHVisInstanced->Reload();

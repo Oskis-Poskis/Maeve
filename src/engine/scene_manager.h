@@ -120,8 +120,7 @@ namespace SM
             LightType   _type;
             NodeType _nodeType = NodeType::Light_;
     };
-    
-    void DrawGBuffers();
+
     void CalculateObjectsTriCount();
     void AddNode(Object* Object);
     void AddNode(Light* Object);
