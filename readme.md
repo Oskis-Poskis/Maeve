@@ -30,7 +30,7 @@ sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
-### **test**
+### **Compile da shit**
 ```bash
 make
 ```
