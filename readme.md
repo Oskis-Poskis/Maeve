@@ -15,8 +15,8 @@ For Windows, make sure to place the required libraries in the following director
 On Linux, you’ll need to install the following libs:
 
 Arch:
-    `glfw`
-    `glm`
+- `glfw`
+- `glm`
     
 Debian:
     `libglm-dev`
