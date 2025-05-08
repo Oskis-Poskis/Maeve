@@ -19,18 +19,18 @@ For Windows, ensure that you place the required libraries in the following direc
 ### **Linux Setup**  
 On Linux, you’ll need to install the required libraries.
 
-#### **Arch-based Systems (Arch Linux, Manjaro, etc.)**
+#### **1. Arch-based Systems (Arch Linux, Manjaro, etc.)**
 ```bash
 sudo pacman -S glfw glm
 ```
 
-#### **Debian-based Systems (Ubuntu, Debian, Mint, etc.)**
+#### ** 1. Debian-based Systems (Ubuntu, Debian, Mint, etc.)**
 ```bash
 sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
-### Then compile
+### 2. Build
 ```bash
 make -j
 ```
