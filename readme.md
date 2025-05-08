@@ -29,3 +29,12 @@ sudo pacman -S glfw glm
 sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
+
+### **test**
+```bash
+make
+```
+or
+```bash
+make -j
+```
