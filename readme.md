@@ -1,30 +1,24 @@
 # Maeve  
-Custom game engine hobby project WIP
+**WIP Game Engine**
 
-The project’s Makefile shoooooould work on both Windows and Linux, though Windows requires a specific include setup that will be addressed in the future.
+The project's **Makefile** should work on both Windows and Linux, though Windows requires a specific include setup that will be addressed in the future.
 
-### Windows Setup:  
-For Windows, make sure to place the required libraries in the following directories:  
-- C:/include/glm
-- C:/include/GLFW/include  
-- C:/include/GLFW/lib-mingw-w64
-- C:/include/freetype2/include 
-- C:/include/freetype2/build
+---
 
-### Linux Setup:  
-On Linux, you’ll need to install the following libs:
+### **Windows Setup**  
+For Windows, ensure that you place the required libraries in the following directories:
 
-Arch:
-- `glfw`
-- `glm`
-    
-Debian:
-- `libglm-dev`
-- `libglfw3-dev`
-- `libfreetype6-dev`
+- `C:/include/glm`
+- `C:/include/GLFW/include`
+- `C:/include/GLFW/lib-mingw-w64`
+- `C:/include/freetype2/include`
+- `C:/include/freetype2/build`
 
-### Build Instructions:  
-Once dependencies are set up, simply run:
+---
 
-- `make -j`
-- Or `make -j release`
+### **Linux Setup**  
+On Linux, you’ll need to install the required libraries. Below are the installation instructions for **Arch-based** and **Debian-based** distributions.
+
+#### **Arch-based Systems (Arch Linux, Manjaro, etc.)**
+```bash
+sudo pacman -S glfw glm
