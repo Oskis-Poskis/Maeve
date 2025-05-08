@@ -19,9 +19,9 @@ Arch:
 - `glm`
     
 Debian:
-    `libglm-dev`
-    `libglfw3-dev`
-    `libfreetype6-dev`
+- `libglm-dev`
+- `libglfw3-dev`
+- `libfreetype6-dev`
 
 ### Build Instructions:  
 Once dependencies are set up, simply run:
