@@ -24,7 +24,7 @@ On Linux, you’ll need to install the required libraries.
 sudo pacman -S glfw glm
 ```
 
-#### ** 1. Debian-based Systems (Ubuntu, Debian, Mint, etc.)**
+#### **1. Debian-based Systems (Ubuntu, Debian, Mint, etc.)**
 ```bash
 sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
