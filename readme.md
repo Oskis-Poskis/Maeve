@@ -19,7 +19,7 @@ sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
-### 2. Build
+#### 2. Build
 ```bash
 make -j
 ```
@@ -34,8 +34,3 @@ For Windows, ensure that you place the required libraries in the following direc
 - `C:/include/GLFW/lib-mingw-w64`
 - `C:/include/freetype2/include`
 - `C:/include/freetype2/build`
-
-- ### 2. Build
-```bash
-make -j
-```
