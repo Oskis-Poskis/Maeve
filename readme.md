@@ -13,6 +13,7 @@ For Windows, make sure to place the required libraries in the following director
 
 ### Linux Setup:  
 On Linux, you’ll need to install the following libs:
+
 Arch distros:
     glfw
     glm
