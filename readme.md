@@ -5,6 +5,11 @@ The project's **Makefile** should work on both Windows and Linux, though Windows
 
 ---
 
+### **Known Issues**  
+Using alt as to move the camera can lock sometimes unless you disable the setting "Disable Mouse/Touchpad while typing". Not certain of this setting outside of gnome..
+
+---
+
 ### **Linux Setup**  
 On Linux, you’ll need to install the required libraries.
 
