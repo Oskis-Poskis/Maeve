@@ -17,7 +17,7 @@ For Windows, ensure that you place the required libraries in the following direc
 ---
 
 ### **Linux Setup**  
-On Linux, you’ll need to install the required libraries. Below are the installation instructions for **Arch-based** and **Debian-based** distributions.
+On Linux, you’ll need to install the required libraries.
 
 #### **Arch-based Systems (Arch Linux, Manjaro, etc.)**
 ```bash
