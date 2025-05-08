@@ -24,6 +24,8 @@ sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 make -j
 ```
 
+---
+
 ### **Windows Setup**  
 For Windows, ensure that you place the required libraries in the following directories:
 
@@ -37,5 +39,3 @@ For Windows, ensure that you place the required libraries in the following direc
 ```bash
 make -j
 ```
-
----
