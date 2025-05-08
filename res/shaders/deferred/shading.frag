@@ -17,59 +17,96 @@ uniform int NumPointLights;
 uniform sampler2D GAlbedo;
 uniform sampler2D GNormal;
 uniform sampler2D GDepth;
+uniform sampler2D GDirShadowFactor;
 
 uniform mat4 iProjMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 cDir;
 uniform vec3 cPos;
 
-const vec3 BG = vec3(0.1, 0.1, 0.1);
+const vec3 BGcol = vec3(0.1, 0.1, 0.1);
 const float near = 0.1;
 const float far  = 1000.0;
 const float PI   = 3.1415926;
 
-vec3 ViewPosFromDepth();
+vec3 ViewPosFromDepth(float depth);
 
 vec3  fresnelSchlick(float cosTheta, vec3 F0);
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 
-vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir);
+vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir, float shadow);
+
 vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir);
 vec3 CalcPointLightPhong(PointLight light, vec3 albedo, vec3 normal, vec3 viewpos, vec3 viewdir);
 
 highp float NoiseCalc = 1.0 / 255;
 highp float random(highp vec2 coords) { return fract(sin(dot(coords.xy, vec2(12.9898, 78.233))) * 43758.5453); }
 
+float BlurShadowFactor(sampler2D shadowTex, vec2 uv, vec2 texelSize)
+{
+    float kernel[25] = float[](
+        1.0,  4.0,  6.0,  4.0, 1.0,
+        4.0, 16.0, 24.0, 16.0, 4.0,
+        6.0, 24.0, 36.0, 24.0, 6.0,
+        4.0, 16.0, 24.0, 16.0, 4.0,
+        1.0,  4.0,  6.0,  4.0, 1.0
+    );
+
+    float sum = 0.0;
+    float weightSum = 0.0;
+    int i = 0;
+
+    for (int y = -2; y <= 2; ++y) {
+        for (int x = -2; x <= 2; ++x) {
+            vec2 offset = vec2(x, y) * texelSize;
+            float sample = texture(shadowTex, uv + offset).r;
+            float weight = kernel[i++];
+            sum += sample * weight;
+            weightSum += weight;
+        }
+    }
+
+    return sum / weightSum;
+}
+
 void main()
 {
-    vec3  albedo    = texture(GAlbedo, uvs).rgb;
+    // vec3  albedo    = texture(GAlbedo, uvs).rgb;
+    vec3  albedo    = vec3(1.0, 0.2, 0.0);
     vec3  normal    = normalize(texture(GNormal, uvs).rgb);
     float metallic  = 0.0;
     float roughness = 0.25;
     float ao        = 0.0;
+    float depth = texture(GDepth, uvs).r;
 
-    vec3 viewPos = ViewPosFromDepth();
+    vec3 viewPos   = ViewPosFromDepth(depth);
+    vec4 worldPos  = inverse(viewMatrix) * vec4(viewPos, 1.0);
     vec3 viewDir = normalize(-viewPos);
 
-    vec3 final = vec3(0.0);
+    // vec2 texelSize = 1.0 / textureSize(GDirShadowFactor, 0);
+    // float dirShadow = BlurShadowFactor(GDirShadowFactor, uvs, texelSize);
+    float dirShadow = texture(GDirShadowFactor, uvs).r;
+    float shadowStrength = 0.95;
+
+    vec3 ambient = BGcol * albedo;
+    vec3 pointLighting = vec3(0.0);
     for (int i = 0; i < NumPointLights; i++) {
-        final += CalcPointLight(PointLights[i], albedo, normal, metallic, roughness, ao, viewPos, viewDir);
+        pointLighting += CalcPointLight(PointLights[i], albedo, normal, metallic, roughness, ao, viewPos, viewDir);
     }
 
-    final += CalcDirLight(albedo, normal, metallic, roughness, ao, viewPos, viewDir);
+    vec3 dirLighting = CalcDirLight(albedo, normal, metallic, roughness, ao, viewPos, viewDir, 1.0);
+    dirLighting *= mix(1.0, dirShadow, shadowStrength);
 
-    vec3 ambient = BG * albedo * ao;
-    final = ambient + final;
-    
+    vec3 final = ambient + pointLighting + dirLighting;
+
     final  = final / (final + 1.0); // simple reinhardt tonemap
     final  = pow(final, vec3(1.0 / 2.2));
     final += mix(-NoiseCalc, NoiseCalc, random(uvs));
 
     fragColor = vec4(final, 1.0);
-    if (normal.x == 1.0 && normal.y == 1.0 && normal.z == 1.0) fragColor = vec4(BG, 1.0);
-    else if (normal.x == 0.0 && normal.y == 0.0 && normal.z == 0.0) fragColor = vec4(BG, 1.0);
+    if (depth > 0.9999) fragColor = vec4(BGcol, 1.0);
 }
 
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -134,11 +171,11 @@ vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, float metallic, 
     return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
-vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir)
+vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, vec3 viewPos, vec3 viewDir, float shadow)
 {
     vec3 N = normal;
     vec3 V = normalize(viewDir);
-    vec3 dir = mat3(viewMatrix) * normalize(vec3(1.0, -1.0, 1.0));
+    vec3 dir = mat3(viewMatrix) * normalize(vec3(1.0, -1.0, 0.75));
     vec3 L = normalize(dir);
     vec3 H = normalize(V + L);
     float len = length(dir);
@@ -155,6 +192,7 @@ vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, flo
     vec3  nom   = NDF * G * F;
     float denom = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
     vec3  specular = nom / denom;
+    specular = specular * shadow;
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
@@ -166,10 +204,8 @@ vec3 CalcDirLight(vec3 albedo, vec3 normal, float metallic, float roughness, flo
 
 // ------------------------------------------------------------------
 
-vec3 ViewPosFromDepth()
+vec3 ViewPosFromDepth(float depth)
 {
-    float depth = texture(GDepth, uvs).r;
-
     vec2 ndc = uvs * 2.0 - 1.0;
     vec4 clip = vec4(ndc, depth * 2.0 - 1.0, 1.0);
     vec4 view = iProjMatrix * clip;
@@ -177,15 +213,6 @@ vec3 ViewPosFromDepth()
 }
 
 // ------------------------------------------------------------------
-
-/*
-
-for (int i = 0; i < NumPointLights; i++)
-{
-    final += CalcPointLightPhong(PointLights[i], albedo, normal, viewPos, viewDir);
-}
-
-*/
 
 vec3 CalcPointLightPhong(PointLight light, vec3 albedo, vec3 normal, vec3 viewPos, vec3 viewDir)
 {

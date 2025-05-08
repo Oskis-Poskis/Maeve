@@ -6,25 +6,41 @@ namespace Deferred
 {   
     enum GBuffer
     {
-        GShaded,
-        GAlbedo,
-        GNormal,
-        GMask,
-        GDepth,
+        GShaded          = 0,
+        GAlbedo          = 1,
+        GNormal          = 2,
+        GMask            = 3,
+        GDepth           = 4,
+        GDirShadowFactor = 5,
     };
 
+    enum ShadowCascades
+    {
+        First  = 6,
+        Second = 7,
+        Third  = 8,
+    };
+
+    inline std::unique_ptr<Shader> S_GBuffers;
     inline std::unique_ptr<Shader> S_shading;
+    inline std::unique_ptr<Shader> S_shadow;
+    inline std::unique_ptr<Shader> S_shadowCalc;
     inline std::unique_ptr<Shader> S_mask;
     inline std::unique_ptr<Shader> S_postprocessQuad;
 
+    inline unsigned int GBuffers[6];
+
     void Initialize();
-    unsigned int &GetFBO();
-    unsigned int GetTexture(GBuffer which);
+    void DrawGBuffers();
+    void DrawDirShadowMapDepth();
+
+    unsigned int &GetDeferredFBO();
 
     void DrawFullscreenQuad(unsigned int texture);
     void DoPostProcessAndDisplay();
-    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel = false, bool sampleStencil = false);
+    void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel = false, bool sampleStencil = false, bool linearize = false);
     void DrawMask();
     void DoShading();
     void VisualizeGBuffers();
+    void VisualizeShadowMap();
 }
