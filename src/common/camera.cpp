@@ -99,23 +99,48 @@ void Camera::Update()
     {
         if (Input::MouseButtonPressed(GLFW_MOUSE_BUTTON_2) || Input::KeyDown(GLFW_KEY_LEFT_ALT))
         {
+            // Turning = true;
+            // glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
+            // if (firstClick)
+            // {
+            //     glfwGetCursorPos(Engine::WindowPtr(), &downposx, &downposy);
+            //     glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
+            //     firstClick = false;
+            //     unrightclick = false;
+            // }
+
+            // glfwGetCursorPos(Engine::WindowPtr(), &mousex, &mousey);
+            // float dy = (float)(mousey - (Engine::GetWindowSize().y / 2));
+		    // float dx = (float)(mousex - (Engine::GetWindowSize().x / 2));
+            // MouseInput(dx, -dy);
+            
+            // glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
+
             Turning = true;
             glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
             if (firstClick)
             {
+                // Get initial position when first clicked
                 glfwGetCursorPos(Engine::WindowPtr(), &downposx, &downposy);
-                glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
                 firstClick = false;
                 unrightclick = false;
             }
 
+            // Get current mouse position
             glfwGetCursorPos(Engine::WindowPtr(), &mousex, &mousey);
-            float dy = (float)(mousey - (Engine::GetWindowSize().y / 2));
-		    float dx = (float)(mousex - (Engine::GetWindowSize().x / 2));
+
+            // Calculate the difference from the initial position or previous frame
+            float dx = (float)(mousex - downposx);
+            float dy = (float)(mousey - downposy);
+
+            // Update downposx and downposy to the current position for the next frame
+            downposx = mousex;
+            downposy = mousey;
+
+            // Use the mouse movement (dx, dy) for input
             MouseInput(dx, -dy);
-            
-            glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
         }
         else
         {
@@ -123,7 +148,7 @@ void Camera::Update()
             glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             if (!unrightclick)
             {
-                glfwSetCursorPos(Engine::WindowPtr(), downposx, downposy);
+                // glfwSetCursorPos(Engine::WindowPtr(), downposx, downposy);
                 unrightclick = true;
             }
             firstClick = true;
