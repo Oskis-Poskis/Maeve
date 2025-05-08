@@ -12,11 +12,15 @@ For Windows, make sure to place the required libraries in the following director
 - C:/include/freetype2/build
 
 ### Linux Setup:  
-On Linux, you’ll need to install the following dependencies:
-- libglm-dev  
-- libglfw-dev / libglfw3-dev
-- libfreetype6-dev
-- glad
+On Linux, you’ll need to install the following libs:
+Arch distros:
+    glfw
+    glm
+    
+Debian-based distros:
+    libglm-dev
+    libglfw3-dev
+    libfreetype6-dev
 
 ### Build Instructions:  
 Once dependencies are set up, simply run:
