@@ -1,5 +1,5 @@
 # Maeve  
-**WIP Game Engine**
+**WIP Custom Game Engine**
 
 The project's **Makefile** should work on both Windows and Linux, though Windows requires a specific include setup that will be addressed in the future.
 
@@ -22,3 +22,10 @@ On Linux, you’ll need to install the required libraries. Below are the install
 #### **Arch-based Systems (Arch Linux, Manjaro, etc.)**
 ```bash
 sudo pacman -S glfw glm
+```
+
+#### **Debian-based Systems (Ubuntu, Debian, Mint, etc.)**
+```bash
+sudo apt update
+sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
+```
