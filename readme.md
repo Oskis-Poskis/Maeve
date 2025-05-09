@@ -24,18 +24,14 @@ sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
-#### **2. One of following libs for native file dialogs (tinyfiledialogs)**
-```
-applescript or
-kdialog or
-yad or
-Xdialog or
-or zenity (or matedialog or shellementary or qarma)
-or python (2 or 3) + tkinter + python-dbus (optional)
-or dialog (opens console if needed) ** Disabled by default **
-or xterm + bash (opens console for basic input)
-or existing console for basic input.
-```
+#### **2. One of the following libraries/tools for native file dialogs (used by `tinyfiledialogs`)**
+- **AppleScript** — macOS only
+- **kdialog** — for KDE-based systems
+- **yad** — Yet Another Dialog
+- **Xdialog** — old X11 dialog system
+- **zenity** — GTK-based
+- **matedialog**, **shellementary**, or **qarma**
+- **python (2 or 3)** + **tkinter** (+ optional **python-dbus**) — uses Tk GUI
 
 #### 3. Build
 ```bash
