@@ -5,11 +5,6 @@ The project's **Makefile** should work on both Windows and Linux, though Windows
 
 ---
 
-### **Known Issues**  
-Using alt as to move the camera can lock sometimes unless you disable the setting "Disable Mouse/Touchpad while typing". Not certain of this setting outside of gnome..
-
----
-
 ### **Linux Setup**  
 On Linux, you’ll need to install the required libraries.
 
@@ -48,3 +43,8 @@ For Windows, ensure that you place the required libraries in the following direc
 - `C:/include/GLFW/lib-mingw-w64`
 - `C:/include/freetype2/include`
 - `C:/include/freetype2/build`
+
+### **Known Issues**  
+Using alt to move the camera can lock unless you disable the setting "Disable Mouse/Touchpad while typing". Not certain of this setting outside of gnome..
+
+---
