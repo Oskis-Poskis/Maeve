@@ -24,7 +24,20 @@ sudo apt update
 sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
-#### 2. Build
+#### **2. One of following libs for native file dialogs (tinyfiledialogs)**
+```bash
+applescript or
+kdialog or
+yad or
+Xdialog
+or zenity (or matedialog or shellementary or qarma)
+or python (2 or 3) + tkinter + python-dbus (optional)
+or dialog (opens console if needed) ** Disabled by default **
+or xterm + bash (opens console for basic input)
+or existing console for basic input.
+```
+
+#### 3. Build
 ```bash
 make -j
 ```
