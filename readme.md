@@ -25,11 +25,11 @@ sudo apt install libglm-dev libglfw3-dev libfreetype6-dev
 ```
 
 #### **2. One of following libs for native file dialogs (tinyfiledialogs)**
-```bash
+```
 applescript or
 kdialog or
 yad or
-Xdialog
+Xdialog or
 or zenity (or matedialog or shellementary or qarma)
 or python (2 or 3) + tkinter + python-dbus (optional)
 or dialog (opens console if needed) ** Disabled by default **
