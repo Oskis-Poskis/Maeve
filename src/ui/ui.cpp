@@ -796,17 +796,43 @@ namespace UI
         if (Input::KeyPressed(GLFW_KEY_0))
         {
             const char *filters[] = { "*.obj" };
-            char* loadPath = tinyfd_openFileDialog("Load OBJ", Stats::ProjectPath.c_str(), 1, filters, "Obj files", 0);
-            std::string loadPathS = std::string(loadPath);
-            std::string name      = qk::GetFileName(loadPathS, true);
-
-            if (qk::StringEndsWith(loadPathS, ".obj"))
+            char* loadPath = tinyfd_openFileDialog(
+                "Load OBJ",
+                Stats::ProjectPath.c_str(),
+                1, filters, "OBJ files", 0
+            );
+            if (loadPath)
             {
-                AM::IO::LoadObjAsync(loadPathS, name);
+                std::string loadPathS = loadPath;
+                std::string name      = qk::GetFileName(loadPathS, true);
 
+                if (qk::StringEndsWith(loadPathS, ".obj"))
+                {
+                    AM::IO::LoadObjAsync(loadPathS, name);
+                    activemenu = &meshes;
+                }
+            }
+        }
+
+        if (Input::KeyPressed(GLFW_KEY_9))
+        {
+            // pop up a folder chooser
+            char* folderPath = tinyfd_selectFolderDialog(
+                "Select OBJ Folder",
+                Stats::ProjectPath.c_str()
+            );
+            if (folderPath)
+            {
+                std::string folderS = folderPath;
+                // use the folder name as mesh‐group prefix
+                std::string prefix  = qk::GetFileName(folderS, true);
+
+                // asynchronously load every .obj in that folder
+                AM::IO::LoadObjFolderAsync(folderS, prefix);
                 activemenu = &meshes;
             }
         }
+
     }
 
     void LightsInput()

@@ -11,7 +11,7 @@ namespace Stats
     float GetFPS();
     float GetMS();
     float GetDeltaTime();
-    int GetVramUsageMb();
+    int GetVRAMUsageMb();
     int GetVRAMTotalMb();
     
     void Count(float time);

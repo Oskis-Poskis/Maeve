@@ -88,7 +88,7 @@ void main()
     // vec2 texelSize = 1.0 / textureSize(GDirShadowFactor, 0);
     // float dirShadow = BlurShadowFactor(GDirShadowFactor, uvs, texelSize);
     float dirShadow = texture(GDirShadowFactor, uvs).r;
-    float shadowStrength = 0.95;
+    float shadowStrength = 0.5;
 
     vec3 ambient = BGcol * albedo;
     vec3 pointLighting = vec3(0.0);
@@ -97,7 +97,7 @@ void main()
     }
 
     vec3 dirLighting = CalcDirLight(albedo, normal, metallic, roughness, ao, viewPos, viewDir, 1.0);
-    // dirLighting *= mix(1.0, dirShadow, shadowStrength);
+    dirLighting *= mix(1.0, dirShadow, shadowStrength);
 
     vec3 final = ambient + pointLighting + dirLighting;
 

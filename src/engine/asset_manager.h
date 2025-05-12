@@ -16,6 +16,7 @@ namespace AM
         glm::vec3 Position;
         glm::vec3 Normal;
         
+        VtxData() = default;
         VtxData(glm::vec3 pos, glm::vec3 norm) : Position(pos), Normal(norm) {}
     };
 
@@ -145,7 +146,8 @@ namespace AM
 
     namespace IO
     {
-        void LoadObjAsync(std::string Path, std::string MeshName);
+        void LoadObjAsync(const std::string& Path, std::string MeshName);
+        void LoadObjFolderAsync(const std::string& folderPath, const std::string& meshNamePrefix);
     };
 
     namespace Presets

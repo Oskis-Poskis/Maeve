@@ -6,7 +6,7 @@ layout(std430, binding = 0) buffer Matrices {
     mat4 modelMatrices[];
 };
 
-uniform mat4 model;
+// uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 

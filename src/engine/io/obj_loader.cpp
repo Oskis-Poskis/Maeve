@@ -16,146 +16,186 @@ using namespace std::chrono;
 #include <glm/gtc/matrix_transform.hpp>
 #include <thread>
 #include <queue>
+#include <filesystem>
 
 namespace AM::IO
 {
     bool LineStartsWith(std::string line, std::string compare);
+    
+    static inline float fastParseFloat(const char* begin, const char* end) {
+        float value = 0.0f;
+        std::from_chars_result res = std::from_chars(begin, end, value);
+        return value;
+    }
 
-    std::vector<VtxData> LoadObjFile(std::string Path)
-    {   
+    static inline int fastParseInt(const char* begin, const char* end) {
+        int value = 0;
+        std::from_chars_result res = std::from_chars(begin, end, value);
+        return value;
+    }
+
+    std::vector<VtxData> LoadObjFile(const std::string& relativePath)
+    {
         auto start = high_resolution_clock::now();
 
-        std::string filePath = qk::CombinedPath(Stats::ProjectPath, Path);
+        namespace fs = std::filesystem;
+        std::string path = relativePath;
+        std::ifstream file(path, std::ios::in);
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open OBJ: " + path);
+        }
 
-        std::cout << "[>] Opening obj file: " << filePath << std::endl;
-
-        std::vector<unsigned int> positionIndices, uvIndices, normalIndices;
-        std::vector<glm::vec3> positions, normals;
+        std::vector<glm::vec3> positions;
         std::vector<glm::vec2> uvs;
+        std::vector<glm::vec3> normals;
+        std::vector<VtxData>   vertices;
 
-        glm::vec3 v;
-        glm::vec2 t;
-        
-        int numIndices = 0;
-        int matches = 0;
-        bool checkedTexCoords = false;
+        // positions.reserve(1024);
+        // uvs.reserve(1024);
+        // normals.reserve(1024);
+        // vertices.reserve(4096);
 
-        std::vector<std::string> lines;
-        std::ifstream file;
-        char text[256];
-
-        file.open(filePath);
-        if (!file.is_open())
+        std::string line;
+        while (std::getline(file, line))
         {
-            std::cout << "[!] Failed to open obj file :(\n";
-            return {};
-        }
-
-        while (!file.eof())
-        {
-            file.getline(text, 256);
-            lines.push_back(text);
-        }
-        file.close();
-        
-        for (std::string line : lines)
-        {
-            if (LineStartsWith(line, "v "))
-            {
-                sscanf(line.c_str(), "v %f %f %f", &v.x, &v.y, &v.z);
+            if (line.size() < 2) continue;
+            char type = line[0];
+            if (type == 'v' && line[1] == ' ') {
+                // v x y z
+                const char* ptr = line.c_str() + 2;
+                glm::vec3 v;
+                // parse three floats
+                const char* start = ptr;
+                while (*ptr && *ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ') ++ptr;
+                v.x = fastParseFloat(start, ptr);
+                while (*ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ') ++ptr;
+                v.y = fastParseFloat(start, ptr);
+                while (*ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ' && *ptr != '\r') ++ptr;
+                v.z = fastParseFloat(start, ptr);
                 positions.push_back(v);
             }
-            else if (LineStartsWith(line, "vn "))
-            {
-                sscanf(line.c_str(), "vn %f %f %f", &v.x, &v.y, &v.z);
-                normals.push_back(v);
-            }
-            else if (LineStartsWith(line, "vt "))
-            {
-                sscanf(line.c_str(), "vt %f %f", &t.x, &t.y);
+            else if (type == 'v' && line[1] == 't') {
+                // vt u v
+                const char* ptr = line.c_str() + 3;
+                glm::vec2 t;
+                const char* start = ptr;
+                while (*ptr && *ptr != ' ') ++ptr;
+                t.x = fastParseFloat(start, ptr);
+                while (*ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ' && *ptr != '\r') ++ptr;
+                t.y = fastParseFloat(start, ptr);
                 uvs.push_back(t);
             }
-            else if (LineStartsWith(line, "f "))
-            {
-                numIndices++;
-                // Check number of face members
-                if (LineStartsWith(line, "f ") && !checkedTexCoords)
-                {
-                    unsigned int temp[3];
-                    // Has position, normal and texcoord
-                    matches = sscanf(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-                                     &temp[0], &temp[0], &temp[0],
-                                     &temp[1], &temp[1], &temp[1],
-                                     &temp[2], &temp[2], &temp[2]);
-
-                    // Only position and normal
-                    if (matches != 9)
-                    {
-                        matches = sscanf(line.c_str(), "f %d//%d %d//%d %d//%d\n",
-                                         &temp[0], &temp[0],
-                                         &temp[1], &temp[1],
-                                         &temp[2], &temp[2]);
+            else if (type == 'v' && line[1] == 'n') {
+                // vn x y z
+                const char* ptr = line.c_str() + 3;
+                glm::vec3 n;
+                const char* start = ptr;
+                while (*ptr && *ptr != ' ') ++ptr;
+                n.x = fastParseFloat(start, ptr);
+                while (*ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ') ++ptr;
+                n.y = fastParseFloat(start, ptr);
+                while (*ptr == ' ') ++ptr;
+                start = ptr;
+                while (*ptr && *ptr != ' ' && *ptr != '\r') ++ptr;
+                n.z = fastParseFloat(start, ptr);
+                normals.push_back(n);
+            }
+            else if (type == 'f' && line[1] == ' ') {
+                // f v/t/n v/t/n v/t/n ...
+                // triangulate n-gons via fan
+                std::vector<int> vi, ti, ni;
+                const char* ptr = line.c_str() + 2;
+                while (*ptr) {
+                    // skip spaces
+                    while (*ptr == ' ') ++ptr;
+                    if (!*ptr || *ptr=='\r') break;
+                    // parse indices
+                    const char* start = ptr;
+                    // vertex index
+                    while (*ptr && *ptr != '/' && *ptr != ' ') ++ptr;
+                    int vIdx = fastParseInt(start, ptr) - 1;
+                    int tIdx = -1, nIdx = -1;
+                    if (*ptr == '/') {
+                        ++ptr;
+                        // texture?
+                        if (*ptr != '/') {
+                            start = ptr;
+                            while (*ptr && *ptr != '/') ++ptr;
+                            tIdx = fastParseInt(start, ptr) - 1;
+                        }
+                        if (*ptr == '/') {
+                            ++ptr;
+                            start = ptr;
+                            while (*ptr && *ptr != ' ' && *ptr!='\r') ++ptr;
+                            nIdx = fastParseInt(start, ptr) - 1;
+                        }
                     }
-
-                    checkedTexCoords = true;
+                    vi.push_back(vIdx);
+                    ti.push_back(tIdx);
+                    ni.push_back(nIdx);
+                    // skip to next
+                    while (*ptr && *ptr != ' ') ++ptr;
                 }
-
-                unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-                if (matches == 9)
-                {
-                    sscanf(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-                           &vertexIndex[0], &uvIndex[0], &normalIndex[0],
-                           &vertexIndex[1], &uvIndex[1], &normalIndex[1],
-                           &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+                // build triangles
+                for (size_t k = 1; k + 1 < vi.size(); ++k) {
+                    for (int idx : {0, (int)k, (int)(k+1)}) {
+                        VtxData vert{};
+                        vert.Position = positions[vi[idx]];
+                        // if (ti[idx] >= 0) vert.uv = uvs[ti[idx]];
+                        if (ni[idx] >= 0) vert.Normal = normals[ni[idx]];
+                        vertices.push_back(vert);
+                    }
                 }
-                else if (matches == 6)
-                {
-                    sscanf(line.c_str(), "f %d//%d %d//%d %d//%d\n",
-                           &vertexIndex[0], &normalIndex[0],
-                           &vertexIndex[1], &normalIndex[1],
-                           &vertexIndex[2], &normalIndex[2]);
-                }
-
-                positionIndices.push_back(vertexIndex[0] - 1);
-                positionIndices.push_back(vertexIndex[1] - 1);
-                positionIndices.push_back(vertexIndex[2] - 1);
-                uvIndices.push_back(uvIndex[0] - 1);
-                uvIndices.push_back(uvIndex[1] - 1);
-                uvIndices.push_back(uvIndex[2] - 1);
-                normalIndices.push_back(normalIndex[0] - 1);
-                normalIndices.push_back(normalIndex[1] - 1);
-                normalIndices.push_back(normalIndex[2] - 1);
             }
         }
-
-        std::vector<VtxData> vertices;
-
-        for (int i = 0; i < numIndices * 3; i++)
-        {
-            VtxData vertex =
-            {
-                positions[positionIndices[i]],
-                normals[normalIndices[i]]
-            };
-            vertices.push_back(vertex);
-        }
+        file.close();
 
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start).count();
-        std::cout << "[:] Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n";
+        std::cout << "Loaded " << vertices.size() / 3 << " triangles from " << path << " in " << (float)duration / 1000000<< "\n";
 
         return vertices;
-        // AM::AddMeshByData(vertices, MeshName);
     }
 
-    void LoadObjAsync(std::string path, std::string meshName) {
-        // auto vertices = LoadObjFile(path);
-        // AM::AddMeshByData(vertices, meshName);
-        std::thread([path, meshName] {
+    void LoadObjAsync(const std::string& path, std::string meshName)
+    {
+        std::thread([path, meshName]
+            {
             auto vertices = LoadObjFile(path);
             qk::PostFunctionToMainThread([v = std::move(vertices), meshName] {
                 AM::AddMeshByData(v, meshName);
             });
+        }).detach();
+    }
+
+    void LoadObjFolderAsync(const std::string& folderPath, const std::string& meshNamePrefix)
+    {
+        std::thread([folderPath, meshNamePrefix]() {
+            namespace fs = std::filesystem;
+            for (auto& entry : fs::directory_iterator(folderPath)) {
+                if (!entry.is_regular_file()) continue;
+                if (entry.path().extension() != ".obj") continue;
+
+                // Compute relative path for loader
+                std::string relPath = fs::relative(entry.path(), Stats::ProjectPath).string();
+                auto vertices = LoadObjFile(relPath);
+
+                // Compose mesh name using prefix and file stem
+                std::string meshName = meshNamePrefix + "_" + entry.path().stem().string();
+                qk::PostFunctionToMainThread([v = std::move(vertices), meshName]() mutable {
+                    AM::AddMeshByData(v, meshName);
+                });
+            }
         }).detach();
     }
 

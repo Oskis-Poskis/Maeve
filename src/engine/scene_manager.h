@@ -134,7 +134,7 @@ namespace SM
 
     void SelectSceneNode(int Index);
     int  GetSelectedIndex();
-    void FocusSelection(float screenPercentage = 0.25f);
+    void FocusSelection(float screenPercentage = 0.5f);
 
     void UpdateDrawList();
     void UpdateInstanceMatrixSSBO();

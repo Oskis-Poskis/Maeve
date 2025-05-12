@@ -33,7 +33,6 @@ namespace SM
         SceneNodes.push_back(Object);
         SceneNodeNames.push_back(Object->GetName());
         UpdateDrawList();
-        // CalculateObjectsTriCount();
 
         NumObjects++;
         _selectedSceneNode = SceneNodes.size() - 1;
@@ -64,9 +63,9 @@ namespace SM
     {
         SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
         if (node->GetType() == SM::NodeType::Object_) {
-            SM::Object* obj = SM::GetObjectFromNode(node);
-            AM::Mesh& mesh = AM::Meshes.at(obj->GetMeshID());
-            AM::BVH& bvh = mesh.bvh;
+            SM::Object* obj  = SM::GetObjectFromNode(node);
+            AM::Mesh&   mesh = AM::Meshes.at(obj->GetMeshID());
+            AM::BVH&    bvh  = mesh.bvh;
 
             // Object's model matrix
             glm::mat4 modelMatrix = obj->GetModelMatrix();
@@ -283,13 +282,14 @@ namespace SM
     void CalculateObjectsTriCount()
     {
         int numtris = 0;
-        for (size_t i = 0; i < SceneNodes.size(); i++)
+
+        for (auto const& [meshID, batch] : SM::DrawList)
         {
-            Object* object = dynamic_cast<Object*>(SceneNodes[i]);
-            if (object) numtris += AM::Meshes.at(object->GetMeshID()).TriangleCount;
+            const auto& mesh = AM::Meshes.at(meshID);
+            numtris += mesh.TriangleCount * batch.Objects.size();
         }
 
-        ObjectsTriCount = numtris;   
+        ObjectsTriCount = numtris;
     }
 
     Light::Light(std::string Name, LightType Type)

@@ -42,7 +42,7 @@ namespace Stats
     float alpha  = 0.95f;
     void DrawStats()
     {
-        std::string memory = std::format("VRAM: {} / {}mb", Stats::GetVramUsageMb(), Stats::GetVRAMTotalMb());
+        std::string memory = std::format("VRAM: {} / {}mb", GetVRAMUsageMb(), GetVRAMTotalMb());
         timer += Stats::GetDeltaTime();
         if (timer >= (1 / (60.0f)))
         {
@@ -64,7 +64,7 @@ namespace Stats
         Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()),         15, Engine::GetWindowSize().y - yOffset - 1  * lineSpacing, textScaling);
         Text::Render(FPS,                                                              15, Engine::GetWindowSize().y - yOffset - 3  * lineSpacing, textScaling);
         Text::Render(ms,                                                               15, Engine::GetWindowSize().y - yOffset - 4  * lineSpacing, textScaling);
-        if (Vendor == "NVIDIA Corporation") Text::Render(memory,                       15, Engine::GetWindowSize().y - yOffset - 5  * lineSpacing, textScaling);
+        Text::Render(memory,                                                           15, Engine::GetWindowSize().y - yOffset - 5  * lineSpacing, textScaling);
         Text::Render(meshes,                                                           15, Engine::GetWindowSize().y - yOffset - 7  * lineSpacing, textScaling);
         Text::Render(objects,                                                          15, Engine::GetWindowSize().y - yOffset - 8  * lineSpacing, textScaling);
         Text::Render("Input Context: " + Input::InputContextString(),                  15, Engine::GetWindowSize().y - yOffset - 10 * lineSpacing, textScaling);
@@ -94,32 +94,45 @@ namespace Stats
         return _deltaTime;
     }
 
-    int GetVramUsageMb()
-    {
-        int totalMemoryKb;
-        int currentMemoryKb;
-        if (Vendor == "NVIDIA Corporation")
-        {
-            glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalMemoryKb);
-            glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &currentMemoryKb);
-
-            int usedMemoryKb = totalMemoryKb - currentMemoryKb;
-            return usedMemoryKb / 1024;
+    bool HasExtension(const char* extName) {
+        GLint nExt;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &nExt);
+        for (GLint i = 0; i < nExt; ++i) {
+            if (std::string(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, i))) == extName)
+                return true;
         }
-        else
-        {
-            int vboMemory[4];
-            glGetIntegerv(GL_VBO_FREE_MEMORY_ATI, vboMemory);
-            int usedMemoryKb = totalMemoryKb - vboMemory[2];
-            return usedMemoryKb / 1024;
-            return 0;
-        }
+        return false;
     }
-    
+
+    // Returns VRAM usage in MB, or -1 if unsupported
+    int GetVRAMUsageMb()
+    {
+        const char* vendorStr = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+        std::string vendor = vendorStr ? vendorStr : "";
+
+        // NVIDIA (NVX extension)
+        if (vendor.find("NVIDIA") != std::string::npos && HasExtension("GL_NVX_gpu_memory_info")) {
+            GLint totalKb = 0, curKb = 0;
+            glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalKb);
+            glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &curKb);
+            return (totalKb - curKb) / 1024;  // Usage in MB
+        }
+
+        return -1; // Unknown vendor or unsupported
+    }
+
+    // Returns total VRAM in MB, or -1 if unsupported
     int GetVRAMTotalMb()
     {
-        int totalMemoryKb;
-        glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalMemoryKb);
-        return totalMemoryKb / 1024;
+        const char* vendorStr = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+        std::string vendor = vendorStr ? vendorStr : "";
+
+        if (vendor.find("NVIDIA") != std::string::npos && HasExtension("GL_NVX_gpu_memory_info")) {
+            GLint totalKb = 0;
+            glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalKb);
+            return totalKb / 1024; // in MB
+        }
+
+        return -1; // Unknown vendor or unsupported
     }
 }

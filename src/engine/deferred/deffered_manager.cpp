@@ -85,7 +85,7 @@ namespace Deferred
     
         glGenTextures(1, &DirCascades);
         glBindTexture(GL_TEXTURE_2D_ARRAY, DirCascades);
-        glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT32F,
+        glTexImage3D( GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT24,
             SHADOW_MAP_RES,
             SHADOW_MAP_RES,
             NUM_CASCADES,
@@ -93,8 +93,8 @@ namespace Deferred
             
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             
         constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
         glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
@@ -156,6 +156,8 @@ namespace Deferred
         glEnable(GL_POLYGON_OFFSET_FILL);
         glDrawBuffer(GL_NONE);
         glReadBuffer(GL_NONE);
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
         glPolygonOffset(2.0f, 4.0f);
 
         glViewport(0, 0, 2048, 2048);
@@ -225,32 +227,48 @@ namespace Deferred
 
             S_shadow->SetMatrix4("lightSpaceMatrix", lightSpaceMatrices[i]);
 
-            for (auto const& mesh : AM::Meshes)
+            for (auto const& [meshID, batch] : SM::DrawList)
             {
-                if (mesh.second.TriangleCount == 0 || mesh.second.VAO == 0) continue;
+                const auto& mesh = AM::Meshes.at(meshID);
+                glBindVertexArray(mesh.VAO);
 
-                int numElements = mesh.second.TriangleCount * 3;
-                glBindVertexArray(mesh.second.VAO);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, batch.SSBOIdx); // Binding point 0
 
-                int index = 0;
-                for (auto &node : SM::SceneNodes)
-                {
-                    if (node->GetType() == SM::NodeType::Object_)
-                    {
-                        SM::Object* object = dynamic_cast<SM::Object*>(node);
-                        if (object->GetMeshID() == mesh.first)
-                        {
-                            S_shadow->SetMatrix4("model", object->GetModelMatrix());
-                            if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
-                            else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
-                        }
-                        index++;
-                    }
-                }
+                // Send instance count
+                int instanceCount = static_cast<int>(batch.Objects.size());
+                if (mesh.UseElements)
+                    glDrawElementsInstanced(GL_TRIANGLES, mesh.TriangleCount * 3, GL_UNSIGNED_INT, 0, instanceCount);
+                else
+                    glDrawArraysInstanced(GL_TRIANGLES, 0, mesh.TriangleCount * 3, instanceCount);
             }
+
+            // for (auto const& mesh : AM::Meshes)
+            // {
+            //     if (mesh.second.TriangleCount == 0 || mesh.second.VAO == 0) continue;
+
+            //     int numElements = mesh.second.TriangleCount * 3;
+            //     glBindVertexArray(mesh.second.VAO);
+
+            //     int index = 0;
+            //     for (auto &node : SM::SceneNodes)
+            //     {
+            //         if (node->GetType() == SM::NodeType::Object_)
+            //         {
+            //             SM::Object* object = dynamic_cast<SM::Object*>(node);
+            //             if (object->GetMeshID() == mesh.first)
+            //             {
+            //                 S_shadow->SetMatrix4("model", object->GetModelMatrix());
+            //                 if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
+            //                 else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
+            //             }
+            //             index++;
+            //         }
+            //     }
+            // }
         }
 
         glViewport(0, 0, Engine::GetWindowSize().x, Engine::GetWindowSize().y);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         glDisable(GL_POLYGON_OFFSET_FILL);
 
@@ -287,13 +305,13 @@ namespace Deferred
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_NONE);
         S_shadowCalc->SetInt("DirShadowMapRaw", ShadowCascades::First);
 
-        // glActiveTexture(GL_TEXTURE7);
-        // glBindTexture(GL_TEXTURE_2D_ARRAY, DirCascades);
-        // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
-        // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
-        // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        // glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // S_shadowCalc->SetInt("DirShadowMap", ShadowCascades::First + 1);
+        glActiveTexture(GL_TEXTURE7);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, DirCascades);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        S_shadowCalc->SetInt("DirShadowMap", ShadowCascades::First + 1);
         
         glBindVertexArray(defferedQuadVAO);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -403,7 +421,7 @@ namespace Deferred
     void Resize(int width, int height)
     {
         glBindTexture(GL_TEXTURE_2D, GBuffers[GShaded]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0,  GL_RGB, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -413,7 +431,7 @@ namespace Deferred
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0,  GL_RGB, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -421,16 +439,16 @@ namespace Deferred
         glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0,  GL_RED, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDepth]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         glBindTexture(GL_TEXTURE_2D, GBuffers[GDirShadowFactor]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0,  GL_RED, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, height, 0,  GL_RED, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }

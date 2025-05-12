@@ -9,7 +9,7 @@ const int NUM_CASCADES = 3;
 uniform mat4  lightSpaceMatrices[NUM_CASCADES];
 uniform float cascadeSplits[NUM_CASCADES];
 uniform sampler2DArray DirShadowMapRaw;
-// uniform sampler2DArrayShadow DirShadowMap;
+uniform sampler2DArrayShadow DirShadowMap;
 
 uniform mat4 iProjMatrix;
 uniform mat4 viewMatrix;
@@ -231,18 +231,22 @@ float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
     else
         bias *= 1 / (cascadeSplits[cascade] * 0.5);
 
-    ivec2 texSize   = textureSize(DirShadowMapRaw, 0).xy;
+    ivec2 texSize  = textureSize(DirShadowMapRaw, 0).xy;
     vec2 texelSize = 1.0 / texSize;
 
     float shadow = 0.0;
-    float angle = rand(vec2(floor(projCoords.xy * textureSize(GNormal, 0) * 16))) * 6.2831853;
-    mat2  rot   = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    float angle  = rand(vec2(floor(projCoords.xy * textureSize(GNormal, 0) * 16))) * 6.2831853;
+    mat2  rot    = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2  offset = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831853);
+        vec2 offset = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831853);
 
-        float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset * texelSize * 2.0, float(cascade))).r;
-        float visibility = sampledDepth < projCoords.z - bias ? 0.0 : 1.0;
+        // float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset * texelSize * 2.0, float(cascade))).r;
+        // float visibility = sampledDepth < projCoords.z - bias ? 0.0 : 1.0;
+
+        vec3 shadowUV = vec3(projCoords.xy, cascade);
+        float visibility = texture(DirShadowMap, vec4(shadowUV.xy + offset * texelSize * 5.0, shadowUV.z, currentDepth - bias));
+
         shadow += visibility;
     }
     shadow /= NUM_SAMPLES;
