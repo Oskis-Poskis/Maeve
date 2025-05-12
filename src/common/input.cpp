@@ -25,7 +25,7 @@ namespace Input
     InputContext previousInputContext;
 
     std::string g_TypedCharacters;
-    bool g_TextInputActive = false;
+    bool g_TextInputActive    = false;
     bool justEnabledTextInput = false;
     void CharCallback(GLFWwindow* window, unsigned int codepoint)
     {
@@ -106,6 +106,7 @@ namespace Input
             case TextInput:    return "Text Input";
             case PopupMenu:    return "Popup Menu";
             case Transforming: return "Transforming";
+            default:           return "This should not happen";
         }
     }
 

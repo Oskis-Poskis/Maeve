@@ -24,7 +24,7 @@ uniform mat4 viewMatrix;
 uniform vec3 cDir;
 uniform vec3 cPos;
 
-const vec3 BGcol = vec3(0.1, 0.1, 0.1);
+const vec3 BGcol = vec3(0.025, 0.025, 0.025);
 const float near = 0.1;
 const float far  = 1000.0;
 const float PI   = 3.1415926;
@@ -74,7 +74,7 @@ float BlurShadowFactor(sampler2D shadowTex, vec2 uv, vec2 texelSize)
 void main()
 {
     // vec3  albedo    = texture(GAlbedo, uvs).rgb;
-    vec3  albedo    = vec3(1.0, 0.2, 0.0);
+    vec3  albedo    = vec3(0.80, 0.65, 0.60);
     vec3  normal    = normalize(texture(GNormal, uvs).rgb);
     float metallic  = 0.0;
     float roughness = 0.25;
@@ -97,7 +97,7 @@ void main()
     }
 
     vec3 dirLighting = CalcDirLight(albedo, normal, metallic, roughness, ao, viewPos, viewDir, 1.0);
-    dirLighting *= mix(1.0, dirShadow, shadowStrength);
+    // dirLighting *= mix(1.0, dirShadow, shadowStrength);
 
     vec3 final = ambient + pointLighting + dirLighting;
 

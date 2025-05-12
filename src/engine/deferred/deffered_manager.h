@@ -31,16 +31,19 @@ namespace Deferred
     inline unsigned int GBuffers[6];
 
     void Initialize();
+    void DrawMask();
     void DrawGBuffers();
-    void DrawDirShadowMapDepth();
+    void DrawShadows();
+    void CalcShadows();
+    void DoShading();
 
-    unsigned int &GetDeferredFBO();
-
+    unsigned int &GetGBufferFBO();
+    unsigned int &GetShadowFBO();
+    
     void DrawFullscreenQuad(unsigned int texture);
     void DoPostProcessAndDisplay();
     void DrawTexturedQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int texture, bool singleChannel = false, bool sampleStencil = false, bool linearize = false);
-    void DrawMask();
-    void DoShading();
+    void DrawTexturedAQuad(glm::vec2 bottomLeft, glm::vec2 topRight, unsigned int textureArray, int layer, bool singleChannel = false, bool sampleStencil = false, bool linearize = false);
     void VisualizeGBuffers();
     void VisualizeShadowMap();
 }

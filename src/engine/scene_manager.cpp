@@ -32,7 +32,8 @@ namespace SM
     {
         SceneNodes.push_back(Object);
         SceneNodeNames.push_back(Object->GetName());
-        CalculateObjectsTriCount();
+        UpdateDrawList();
+        // CalculateObjectsTriCount();
 
         NumObjects++;
         _selectedSceneNode = SceneNodes.size() - 1;
@@ -103,6 +104,42 @@ namespace SM
             AM::EditorCam.SetDirection(viewDirection);
         }
     }
+
+    void UpdateDrawList()
+    {
+        DrawList.clear();
+
+        for (auto& node : SM::SceneNodes)
+        {
+            if (node->GetType() == SM::NodeType::Object_)
+            {
+                auto* object = static_cast<SM::Object*>(node);
+                const std::string& meshID = object->GetMeshID();
+
+                if (AM::Meshes.count(meshID))
+                    DrawList[meshID].Objects.push_back(object);
+            }
+        }
+    }
+
+    void UpdateInstanceMatrixSSBO()
+    {
+        for (auto& [meshID, batch] : DrawList)
+        {
+            size_t count = batch.Objects.size();
+            batch.ModelMats.resize(count);
+
+            for (size_t i = 0; i < count; ++i)
+                batch.ModelMats[i] = batch.Objects[i]->GetModelMatrix();
+
+            if (batch.SSBOIdx == 0)
+                glGenBuffers(1, &batch.SSBOIdx);
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, batch.SSBOIdx);
+            glBufferData(GL_SHADER_STORAGE_BUFFER, count * sizeof(glm::mat4), batch.ModelMats.data(), GL_DYNAMIC_DRAW);
+        }
+    }
+
 
     Object* GetObjectFromNode(SceneNode* node)
     {

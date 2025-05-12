@@ -145,7 +145,7 @@ namespace AM
 
     namespace IO
     {
-        void LoadObj(std::string Path, std::string MeshName);
+        void LoadObjAsync(std::string Path, std::string MeshName);
     };
 
     namespace Presets

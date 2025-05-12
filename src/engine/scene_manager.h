@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -122,8 +123,10 @@ namespace SM
     };
 
     void CalculateObjectsTriCount();
+
     void AddNode(Object* Object);
     void AddNode(Light* Object);
+
     Object* GetObjectFromNode(SceneNode* node);
     Light*  GetLightFromNode(SceneNode* node);
 
@@ -133,8 +136,19 @@ namespace SM
     int  GetSelectedIndex();
     void FocusSelection(float screenPercentage = 0.25f);
 
+    void UpdateDrawList();
+    void UpdateInstanceMatrixSSBO();
+
     inline std::vector<SceneNode*> SceneNodes;
     inline std::vector<std::string> SceneNodeNames;
+
+    struct InstanceBatch
+    {
+        std::vector<Object*> Objects;
+        std::vector<glm::mat4> ModelMats;
+        unsigned int SSBOIdx;
+    };
+    inline std::unordered_map<std::string, InstanceBatch> DrawList;
 
     inline int ObjectsTriCount;
     inline int NumObjects;

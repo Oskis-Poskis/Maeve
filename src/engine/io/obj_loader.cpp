@@ -14,12 +14,14 @@ using namespace std::chrono;
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <thread>
+#include <queue>
 
 namespace AM::IO
 {
     bool LineStartsWith(std::string line, std::string compare);
 
-    void LoadObj(std::string Path, std::string MeshName)
+    std::vector<VtxData> LoadObjFile(std::string Path)
     {   
         auto start = high_resolution_clock::now();
 
@@ -46,7 +48,7 @@ namespace AM::IO
         if (!file.is_open())
         {
             std::cout << "[!] Failed to open obj file :(\n";
-            return;
+            return {};
         }
 
         while (!file.eof())
@@ -126,13 +128,9 @@ namespace AM::IO
             }
         }
 
-        int numpositions = positionIndices.size();
-        int numnormals = normalIndices.size();
-        int numuvs = uvIndices.size();
-
         std::vector<VtxData> vertices;
 
-        for (unsigned int i = 0; i < numIndices * 3; i++)
+        for (int i = 0; i < numIndices * 3; i++)
         {
             VtxData vertex =
             {
@@ -146,7 +144,19 @@ namespace AM::IO
         auto duration = duration_cast<microseconds>(stop - start).count();
         std::cout << "[:] Loaded obj with " << qk::FmtK(int(vertices.size()) / 3) << " triangles in " << (float)duration / 1000000 << " seconds\n";
 
-        AM::AddMeshByData(vertices, MeshName);
+        return vertices;
+        // AM::AddMeshByData(vertices, MeshName);
+    }
+
+    void LoadObjAsync(std::string path, std::string meshName) {
+        // auto vertices = LoadObjFile(path);
+        // AM::AddMeshByData(vertices, meshName);
+        std::thread([path, meshName] {
+            auto vertices = LoadObjFile(path);
+            qk::PostFunctionToMainThread([v = std::move(vertices), meshName] {
+                AM::AddMeshByData(v, meshName);
+            });
+        }).detach();
     }
 
     bool LineStartsWith(std::string line, std::string comp)

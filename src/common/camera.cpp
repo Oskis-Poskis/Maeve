@@ -59,7 +59,10 @@ void Camera::MouseInput(float xoffset, float yoffset)
 
 void Camera::KeyboardInput(Movement_Direction direction)
 {
-    float velocity = Speed * Stats::GetDeltaTime();
+    float deltaTime = Stats::GetDeltaTime();
+    deltaTime = glm::clamp(deltaTime, 0.001f, 0.1f);
+    float velocity = Speed * deltaTime;
+
     if (direction == FORWARD)  _targetPosition += Front   * velocity;
     if (direction == BACKWARD) _targetPosition -= Front   * velocity;
     if (direction == RIGHT)    _targetPosition += Right   * velocity;
@@ -118,7 +121,7 @@ void Camera::Update()
             // glfwSetCursorPos(Engine::WindowPtr(), Engine::GetWindowSize().x / 2, Engine::GetWindowSize().y / 2);
 
             Turning = true;
-            glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            glfwSetInputMode(Engine::WindowPtr(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
             if (firstClick)
             {

@@ -123,12 +123,14 @@ namespace AM
     {
         Meshes.insert( {Name, Mesh(VertexData)} );
         MeshNames.push_back(Name);
+        SM::UpdateDrawList();
     }
 
     void AddMeshByData(const std::vector<VtxData>& VertexData, std::vector<unsigned int> Indices, std::string Name)
     {   
         Meshes.insert( {Name, Mesh(VertexData, Indices)} );
         MeshNames.push_back(Name);
+        SM::UpdateDrawList();
     }
 
     void Resize(int width, int height)

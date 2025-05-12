@@ -80,12 +80,6 @@ namespace  LightManipulation
 
             glm::ivec2 slider_center_below = screen_pos - glm::vec2(0, OuterRadius + slider_width / 2 + 20);
 
-            // glm::vec3 bgCol = glm::vec3(0.1f);
-            // Text::RenderCenteredBG("(R)", screen_pos.x, slider_center.y + OuterRadius + 15, 0.5f, glm::vec3(0.95f), bgCol);
-            // Text::RenderCenteredBG("(1)", slider_center.x, slider_center.y + OuterRadius + 15, 0.5f, glm::vec3(0.95f), bgCol);
-            // Text::RenderCenteredBG("(2)", slider_center.x + offset.x, slider_center.y + OuterRadius + 15, 0.5f, glm::vec3(0.95f), bgCol);
-            // Text::RenderCenteredBG("(3)", slider_center.x, slider_center_below.y - Text::CalculateMaxTextAscent("(3)", 0.5f) / 2.0f, 0.5f, glm::vec3(0.95f), bgCol);
-
             glm::ivec2 topRightBelow = slider_center_below + glm::ivec2(OuterRadius, slider_width / 2);
             glm::ivec2 bottomLeftBelow = slider_center_below - glm::ivec2(OuterRadius, slider_width / 2);
 
@@ -102,6 +96,7 @@ namespace  LightManipulation
                 // Handle invalid input (e.g., non-numeric text)
                 // Optionally, you could reset the input text or leave it unchanged
                 // std::cerr << "Invalid intensity value: " << InputText << std::endl;
+                printf("shit\n");
             } catch (const std::out_of_range& e) {
                 // Handle out-of-range values (e.g., too large or too small)
                 // std::cerr << "Intensity value out of range: " << InputText << std::endl;

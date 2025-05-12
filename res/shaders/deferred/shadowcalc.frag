@@ -52,10 +52,9 @@ void main()
     vec4 viewPosLS = lightSpaceMatrices[cascade] * worldPos;
     vec3 viewDir   = normalize(-viewPos);
 
-    float dirLightShadow = PCSS(viewPosLS, normal, cascade);
-    // float dirLightShadow = CalcDirShadow(viewPosLS, normal, viewPos, cascade);
+    // float dirLightShadow = PCSS(viewPosLS, normal, cascade);
+    float dirLightShadow = CalcDirShadow(viewPosLS, normal, viewPos, cascade);
 
-    // out_ShadowFactor = texture(DirShadowMapRaw, vec3(uvs, cascade)).r;
     out_ShadowFactor = dirLightShadow;
 }
 
@@ -240,9 +239,7 @@ float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
     mat2  rot   = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        float texelWorldSize = getWorldTexelSize(lightSpaceMatrices[cascade], texSize.x);
-        float uvRadius = 0.025 / texelWorldSize; // KERNEL_RADIUS in world units
-        vec2  offset = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831853) * uvRadius;
+        vec2  offset = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831853);
 
         float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset * texelSize * 2.0, float(cascade))).r;
         float visibility = sampledDepth < projCoords.z - bias ? 0.0 : 1.0;

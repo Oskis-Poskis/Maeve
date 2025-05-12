@@ -17,6 +17,7 @@
 #include "../engine/asset_manager.h"
 #include "../engine/scene_manager.h"
 #include "../engine/deferred/deffered_manager.h"
+#include "../third-party/tfl/tinyfiledialogs.h"
 
 namespace UI
 {
@@ -35,7 +36,7 @@ namespace UI
     // ---- replace with config file? ----
 
     // Menu General
-    int OutlineWidth   = 2;
+    int OutlineWidth = 2;
     int MenuStartY = 220;
     float animSpeed = 5.0f;
     glm::vec3 OutlineColor(0.09f);
@@ -81,9 +82,8 @@ namespace UI
          Menu engine;
          Menu qk;
          Menu debug;
-              Menu display;
 
-    std::vector<std::string> MN_DebugDisplayItems = { "None", "BVH", "Deferred", "Stats", "Shadow Map" };
+    std::vector<std::string> MN_DebugItems = { "None", "BVH", "Deferred", "Stats", "Shadow Map" };
 
     bool inMenu       = false;
     bool grabbingMenu = false;
@@ -96,7 +96,7 @@ namespace UI
     int slidingSliderID = -1;
     int currentSliderID =  0;
 
-    int activeInputBoxID  = -1;
+    uintptr_t activeInputBoxID = -1;
 
     void Eject()
     {
@@ -126,7 +126,7 @@ namespace UI
                 mainMenu.SelectedSubMenu = 0;
                 sceneManager.SelectedSubMenu = SM::GetSelectedIndex();
 
-                inMenu = true;
+                inMenu = !inMenu;
                 Input::SetInputContext(Input::Menu);
             }
             // Asset Manager
@@ -135,7 +135,7 @@ namespace UI
                 activemenu = &assetManager;
                 mainMenu.SelectedSubMenu = 1;
 
-                inMenu = true;
+                inMenu = !inMenu;
                 Input::SetInputContext(Input::Menu);
             }
         }
@@ -680,30 +680,36 @@ namespace UI
         }
 
         // Handle hotkey focus
-        if (Input::KeyPressed(HotKey) && activeInputBoxID == -1) {
+        if (Input::KeyPressed(HotKey) && activeInputBoxID == -1)
+        {
             OutText.clear();
             activeInputBoxID = id;
-            Input::EnableTextInput(true);
+            Input::EnableTextInput();
             Input::SetInputContext(Input::TextInput);
         }
 
         // If focused, capture input
-        if (activeInputBoxID == id) {
+        if (activeInputBoxID == id)
+        {
             OutText += Input::GetTypedCharacters(OnlyNumbers, OnlyIntegers);
 
-            if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !OutText.empty()) {
+            if (Input::KeyPressed(GLFW_KEY_BACKSPACE) && !OutText.empty())
+            {
                 OutText.pop_back(); // Handle backspace
             }
 
             if (Input::KeyPressed(GLFW_KEY_ENTER) || Input::KeyPressed(GLFW_KEY_ESCAPE) ||
-               (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && !isRectHovered(BottomLeft, TopRight)))
+                (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && !isRectHovered(BottomLeft, TopRight)))
             {
-                if (OnlyNumbers && !OnlyIntegers) {
+                if (OnlyNumbers && !OnlyIntegers)
+                {
                     if (OutText.size() == 0) OutText = "0.000";
-                    else{
+                    else
+                    {
                         size_t dotPos = OutText.find('.');
                         if (dotPos == std::string::npos) OutText += ".000";
-                        else {
+                        else
+                        {
                             size_t decimalCount = OutText.size() - dotPos - 1;
                             if (decimalCount < 3) OutText.append(3 - decimalCount, '0');
                         }
@@ -727,10 +733,10 @@ namespace UI
             // Draw the cursor (just a thin vertical line)
             glm::ivec2 cursorTopLeft(cursorX, BottomLeft.y + 2); // Adjust the Y position to align with the text
             glm::ivec2 cursorBottomRight(cursorX + 2, TopRight.y - 2); // Width of the cursor (a thin line)
-            
             UI::DrawRect(cursorTopLeft, cursorBottomRight, glm::vec3(0.95f)); // Draw cursor
         }
-        else {
+        else
+        {
             UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.085f));
             UI::DrawRect(TopRight, BottomLeft, glm::vec3(0.125f));
 
@@ -786,6 +792,21 @@ namespace UI
             SM::SelectSceneNode(SM::SceneNodes.size() - 1);
             if (!Input::KeyDown(GLFW_KEY_LEFT_SHIFT)) Eject();
         }
+
+        if (Input::KeyPressed(GLFW_KEY_0))
+        {
+            const char *filters[] = { "*.obj" };
+            char* loadPath = tinyfd_openFileDialog("Load OBJ", Stats::ProjectPath.c_str(), 1, filters, "Obj files", 0);
+            std::string loadPathS = std::string(loadPath);
+            std::string name      = qk::GetFileName(loadPathS, true);
+
+            if (qk::StringEndsWith(loadPathS, ".obj"))
+            {
+                AM::IO::LoadObjAsync(loadPathS, name);
+
+                activemenu = &meshes;
+            }
+        }
     }
 
     void LightsInput()
@@ -826,16 +847,16 @@ namespace UI
         }
     }
 
-    void DisplayInput()
+    void DebugInput()
     {
         if (Input::KeyPressed(GLFW_KEY_ENTER))
-            Engine::debugMode = static_cast<Engine::DebugMode>(display.SelectedSubMenu + 1);
+            Engine::debugMode = static_cast<Engine::DebugMode>(debug.SelectedSubMenu + 1);
 
         for (int key = GLFW_KEY_1; key <= GLFW_KEY_5; ++key) {
             if (Input::KeyPressed(key))
             {
                 int submenuIndex = key - GLFW_KEY_1;
-                display.SelectedSubMenu = submenuIndex;
+                debug.SelectedSubMenu = submenuIndex;
                 Engine::debugMode = static_cast<Engine::DebugMode>(submenuIndex + 1);
             }
         }
@@ -904,12 +925,8 @@ namespace UI
             engine.Initialize("Engine",         SecondaryColor);
             qk.Initialize("Qk",                 SecondaryColor);
 
-            debug.Initialize("Debug",           SecondaryColor);
-            {
-                display.Initialize("Display", SecondaryColor, &MN_DebugDisplayItems);
-                display.ExtraInput = DisplayInput;
-            }
-            debug.AddSubMenu(&display);
+            debug.Initialize("Debug", SecondaryColor, &MN_DebugItems);
+            debug.ExtraInput = DebugInput;   
         }
         
         mainMenu.AddSubMenu(&sceneManager);

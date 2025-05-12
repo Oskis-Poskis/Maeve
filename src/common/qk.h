@@ -6,10 +6,15 @@
 
 #include "../engine/asset_manager.h"
 
+#include <functional>
+
 // qk useful funcs
 namespace qk
 {
     void Initialize();
+
+    void PostFunctionToMainThread(std::function<void()> task);
+    void ExecuteMainThreadTasks();
 
     std::string FmtK(int value);
     std::string FmtK(float value);
@@ -23,6 +28,8 @@ namespace qk
     std::string FormatVec(glm::ivec2 vec);
 
     float TextToFloat(std::string Text);
+    bool StringEndsWith(std::string str, std::string end);
+    std::string GetFileName(std::string path, bool stripExtension = false);
 
     int RandomInt(int min, int max);
 
@@ -41,7 +48,7 @@ namespace qk
     void DrawLine(glm::vec3 p1, glm::vec3 p2, glm::vec3 color = glm::vec3(1.0f), int lineWidth = 2);
     void DrawTri(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 color = glm::vec3(1.0f));
 
-    void DrawScreenAlignedPlane(glm::vec3 pos, float scale, float maxScaleFactor, glm::vec3 color = glm::vec3(1.0f));
+    void DrawScreenAlignedPlane(glm::vec3 pos, float scale, glm::vec3 color = glm::vec3(1.0f));
 
     void Todo(std::string message);
 

@@ -98,7 +98,7 @@ namespace Engine
             glfwSetWindowMaximizeCallback(window, windowMaximized);
 
             // glfwSetWindowAttrib(window, GLFW_DECORATED, false);
-            glfwSwapInterval(1);
+            glfwSwapInterval(0);
 
             // Center Window
             const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -138,7 +138,7 @@ namespace Engine
 
         windowResized(window, windowWidth, windowHeight);
 
-        debugMode = DebugMode::ShadowMap;
+        debugMode = DebugMode::Stats;
     }
 
     void Run()
@@ -147,7 +147,8 @@ namespace Engine
         Quit();
     }
 
-    float GShadows_Timing;
+    float DrawShadows_Timing;
+    float CalcShadows_Timing;
     float GBuffers_Timing;
     float Shading_Timing;
     float PostProcess_Timing;
@@ -161,12 +162,14 @@ namespace Engine
         if (Input::KeyDown(GLFW_KEY_SPACE) && Input::KeyPressed(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(window, true);
         if (Input::KeyPressed(GLFW_KEY_F11)) ToggleFullscreen();
         if (Input::KeyDown(GLFW_KEY_LEFT_CONTROL) && Input::KeyPressed(GLFW_KEY_Q)) Quit();
-        // for (int i = 0; i <= 9; ++i) {
-        //     if (Input::KeyPressed(GLFW_KEY_0 + i) && Input::GetInputContext() == Input::Game) {
-        //         debugMode = static_cast<DebugMode>(i);
-        //         break;
-        //     }
-        // }
+
+        /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_X) && Input::GetInputContext() == Input::Game)
+        {
+            SM::SceneNodes.erase(SM::SceneNodes.begin() + SM::GetSelectedIndex());
+            SM::SceneNodeNames.erase(SM::SceneNodeNames.begin() + SM::GetSelectedIndex());
+            SM::SelectSceneNode(std::max(SM::GetSelectedIndex() - 1, 0));
+        }
+        /* EDITOR ONLY */ qk::ExecuteMainThreadTasks();
 
         /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_F)) SM::FocusSelection();
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
@@ -174,33 +177,41 @@ namespace Engine
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
         AM::ViewMat4 = AM::EditorCam.GetViewMatrix();
-
-        // Draw GBuffers --------------------------
-
-        qk::BeginGPUTimer("GShadows");
-        Deferred::DrawDirShadowMapDepth();
-        float timing0 = qk::EndGPUTimer("GShadows");
-        if (timing0 != 0.0f) {
-            GShadows_Timing = timing0;
-        }
-
+        SM::UpdateInstanceMatrixSSBO();
+        
+        // GBuffers --------------------------
+        glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetGBufferFBO());
         qk::BeginGPUTimer("GBuffers");
         Deferred::DrawGBuffers();
+        /* EDITOR ONLY */ Deferred::DrawMask(); // R8 texture used for outline generation
         float timing1 = qk::EndGPUTimer("GBuffers");
         if (timing1 != 0.0f) {
             GBuffers_Timing = timing1;
         }
 
-        /* EDITOR ONLY */ Deferred::DrawMask(); // R8 texture used for outline generation
-        // -------------------------------------------
+        // qk::BeginGPUTimer("Draw Shadows");
+        // glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetShadowFBO());
+        // Deferred::DrawShadows();
+        // float time_DrawShadows = qk::EndGPUTimer("Draw Shadows");
+        // if (time_DrawShadows != 0.0f) {
+        //     DrawShadows_Timing = time_DrawShadows;
+        // }
 
+        // qk::BeginGPUTimer("Calc Shadows");
+        // glBindFramebuffer(GL_FRAMEBUFFER, Deferred::GetGBufferFBO());
+        // Deferred::CalcShadows();
+        // float time_CalcShadows = qk::EndGPUTimer("Calc Shadows");
+        // if (time_CalcShadows != 0.0f) {
+        //     CalcShadows_Timing = time_CalcShadows;
+        // }
+        
         // Draw deferred shaded to color attachment 0
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         qk::BeginGPUTimer("Shading");
         Deferred::DoShading();
-        float timing2 = qk::EndGPUTimer("Shading");
-        if (timing2 != 0.0f) {
-            Shading_Timing = timing2;
+        float time_Shading = qk::EndGPUTimer("Shading");
+        if (time_Shading != 0.0f) {
+            Shading_Timing = time_Shading;
         }
         /* EDITOR ONLY */ for (const auto& func : editorDraw3DEvents) { func(); }
         // -------------------------------------------
@@ -213,9 +224,9 @@ namespace Engine
         glDisable(GL_DEPTH_TEST);
         qk::BeginGPUTimer("Post Process");
         Deferred::DoPostProcessAndDisplay();
-        float timing3 = qk::EndGPUTimer("Post Process");
-        if (timing3 != 0.0f) {
-            PostProcess_Timing = timing3;
+        float time_PP = qk::EndGPUTimer("Post Process");
+        if (time_PP != 0.0f) {
+            PostProcess_Timing = time_PP;
         }
         /* EDITOR ONLY */ if (debugMode == DebugMode::Deferred)  Deferred::VisualizeGBuffers();
         /* EDITOR ONLY */ if (debugMode == DebugMode::ShadowMap) Deferred::VisualizeShadowMap();
@@ -223,19 +234,20 @@ namespace Engine
 
         qk::BeginGPUTimer("UI");
         /* EDITOR ONLY */ UI::Render();
-        float timing4 = qk::EndGPUTimer("UI");
-        if (timing4 != 0.0f) {
-            UI_Timing = timing4;
+        float time_UI = qk::EndGPUTimer("UI");
+        if (time_UI != 0.0f) {
+            UI_Timing = time_UI;
         }
 
         Stats::Count(glfwGetTime());
         if (debugMode == DebugMode::Stats) {
             int y = Engine::GetWindowSize().y / 2;
-            Text::Render(qk::LabelWithPaddedNumber("Shadow Depth:", GShadows_Timing, 15, 5),    15, y - 26 * 0, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("GBuffers:", GBuffers_Timing, 15, 5),        15, y - 26 * 1, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),          15, y - 26 * 2, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5), 15, y - 26 * 3, 0.5f);
-            Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                    15, y - 26 * 4, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Draw Shadows:", DrawShadows_Timing, 15, 5),    15, y - 26 * 0, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Calc Shadows:", CalcShadows_Timing, 15, 5),    15, y - 26 * 1, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("GBuffers:", GBuffers_Timing, 15, 5),           15, y - 26 * 2, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),             15, y - 26 * 3, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5),    15, y - 26 * 4, 0.5f);
+            Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                       15, y - 26 * 5, 0.5f);
 
             Stats::DrawStats();
         }
@@ -249,7 +261,7 @@ namespace Engine
 
     void Quit()
     {
-        glDeleteFramebuffers(1, &Deferred::GetDeferredFBO());
+        glDeleteFramebuffers(1, &Deferred::GetGBufferFBO());
         glfwTerminate();
         exit(0);
     }

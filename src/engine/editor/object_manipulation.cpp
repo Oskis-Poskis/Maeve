@@ -78,7 +78,7 @@ namespace ObjectManipulation
         else SelectAxis();
     }
 
-    glm::vec3 PositionFromViewRay(glm::vec3 objectStartPosition, float dist)
+    glm::vec3 PositionFromViewRay(glm::vec3 objectStartPosition)
     {
         float w = Engine::GetWindowSize().x;
         float h = Engine::GetWindowSize().y;
@@ -122,7 +122,7 @@ namespace ObjectManipulation
         glm::vec3 rayTarget = glm::unProject({mx, h - my, 1.0f}, AM::ViewMat4, AM::ProjMat4, viewport);
         glm::vec3 rayDir    = glm::normalize(rayTarget - rayOrigin);
 
-        if (axisMask[0] && axisMask[1] && axisMask[2]) return PositionFromViewRay(objectStartPosition, dist);
+        if (axisMask[0] && axisMask[1] && axisMask[2]) return PositionFromViewRay(objectStartPosition);
 
         int axisCount = int(axisMask[0]) + int(axisMask[1]) + int(axisMask[2]);
         glm::vec3 axisOrigin = objectStartPosition; // Where drag started
@@ -355,7 +355,6 @@ namespace ObjectManipulation
                 float scale_factor = 1.0f;
                 scale_factor += ((glm::length(neutral) - cursor_dist) / Engine::GetWindowSize().y) * 10.0f;
 
-                glm::vec3 axis;
                 glm::vec3 new_scale;
 
                 new_scale = glm::vec3(

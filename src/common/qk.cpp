@@ -12,6 +12,7 @@ namespace fs = std::filesystem;
 #include "../engine/asset_manager.h"
 #include <deque>
 #include <iostream>
+#include <queue>
 
 namespace qk
 {
@@ -32,7 +33,8 @@ namespace qk
     unsigned int tri_vao,  tri_vbo;
     void Initialize()
     {
-        InitializeQuery("GShadows");
+        InitializeQuery("Draw Shadows");
+        InitializeQuery("Calc Shadows");
         InitializeQuery("GBuffers");
         InitializeQuery("Shading");
         InitializeQuery("Post Process");
@@ -57,6 +59,30 @@ namespace qk
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
         glEnableVertexAttribArray(0);
+    }
+
+    std::queue<std::function<void()>> mainThreadQueue;
+    std::mutex queueMutex;
+    void PostFunctionToMainThread(std::function<void()> task)
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        mainThreadQueue.push(std::move(task));
+    }
+
+    void ExecuteMainThreadTasks()
+    {
+        std::function<void()> task = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(queueMutex);
+            if (!mainThreadQueue.empty()) {
+                task = std::move(mainThreadQueue.front());
+                mainThreadQueue.pop();
+            }
+        }
+
+        if (task) {
+            task();
+        }
     }
 
     std::string FmtK(int value)
@@ -152,6 +178,17 @@ namespace qk
             return 0.000f;
         }
         return result;
+    }
+
+    bool StringEndsWith(std::string str, std::string end)
+    {
+        return str.size() >= 4 && str.compare(str.size() - 4, 4, end) == 0;
+    }
+
+    std::string GetFileName(std::string path, bool stripExtension)
+    {
+        if (stripExtension) return std::filesystem::path(path).stem().string();
+        else return std::filesystem::path(path).filename().string();
     }
 
     std::random_device rd;
@@ -442,7 +479,7 @@ namespace qk
         glDisable(GL_POLYGON_OFFSET_FILL);
     }
 
-    void DrawScreenAlignedPlane(glm::vec3 pos, float scale, float maxScaleFactor, glm::vec3 color)
+    void DrawScreenAlignedPlane(glm::vec3 pos, float scale, glm::vec3 color)
     {
         glm::mat4 model = glm::mat4(1.0);
         model = glm::translate(model, pos);
@@ -508,8 +545,6 @@ namespace qk
             gpuTimings.push_back(ms);
             if (gpuTimings.size() > maxSamples)
                 gpuTimings.pop_front();
-
-            double avg = std::accumulate(gpuTimings.begin(), gpuTimings.end(), 0.0) / gpuTimings.size();
 
             queryActive[stageName] = false;  // Mark query as inactive after finishing the measurement
             return ms;
