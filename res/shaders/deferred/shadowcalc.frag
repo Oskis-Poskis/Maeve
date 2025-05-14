@@ -10,6 +10,7 @@ uniform mat4  lightSpaceMatrices[NUM_CASCADES];
 uniform float cascadeSplits[NUM_CASCADES];
 uniform sampler2DArray DirShadowMapRaw;
 uniform sampler2DArrayShadow DirShadowMap;
+uniform float worldUnitsPerTexel[NUM_CASCADES];
 
 uniform mat4 iProjMatrix;
 uniform mat4 viewMatrix;
@@ -110,19 +111,13 @@ float rand(vec2 co) {
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-float getWorldTexelSize(mat4 lightViewProj, int shadowMapRes) {
-    // For ortho: projection matrix scale X = 2 / (right - left)
-    float projScaleX = lightViewProj[0][0]; // assumes no weird skew
-    float orthoWidth = 2.0 / projScaleX;
-    return orthoWidth / float(shadowMapRes);
-}
-
-float findBlocker(vec2 uv, float zReceiver, float searchRadius, vec3 normal, int cascade)
+float findBlocker(vec2 uv, float zReceiver, float searchRadius, int cascade)
 {
     int NUM_SAMPLES = 16;
 
-    int texSize = textureSize(DirShadowMapRaw, 0).x;
-    float angle = rand(vec2(floor(uv * texSize * 8))) * 6.2831853;
+    ivec2 texSize   = textureSize(DirShadowMapRaw, 0).xy;
+    vec2  texelSize = texSize / 2.0;
+    float angle = rand(vec2(floor(uv * 8))) * 6.2831853;
     mat2  rot   = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
     float randAngle = rand(uv * textureSize(DirShadowMapRaw, 0).x);
 
@@ -132,8 +127,8 @@ float findBlocker(vec2 uv, float zReceiver, float searchRadius, vec3 normal, int
     vec3  lightDir = mat3(viewMatrix) * normalize(dirLightDir);
     
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2 offset = rot * VogelDiskSample(i, NUM_SAMPLES, randAngle * 6.2831);
-        float depth = texture(DirShadowMapRaw, vec3(uv + offset * searchRadius, float(cascade))).r;
+        vec2  offset = rot * (VogelDiskSample(i, NUM_SAMPLES, rand(uv)));
+        float depth  = texture(DirShadowMapRaw, vec3(uv + offset * searchRadius, float(cascade))).r;
 
         if (depth < zReceiver) {
             avgBlockerDepth += depth;
@@ -152,18 +147,19 @@ float PCSS(vec4 LSPos, vec3 normal, int cascade)
     if (projCoords.z > 1.0) return 1.0;
 
     float zReceiver = projCoords.z;
-    int texSize     = textureSize(DirShadowMapRaw, 0).x;
+    int   texSize   = textureSize(DirShadowMapRaw, 0).x;
     float texelSize = 1.0 / texSize;
     
     float lightSize     = 0.5;
-    float searchRadius  = 12.0;
-    float jitterRadius  = 256.0; // 24.0
+    float searchRadius  = 16.0;
+    float jitterRadius  = 32.0; // 24.0
     float penumbraPower = 0.85;
     float shadowPower   = 1.25;
     int   NUM_SAMPLES   = 16;
+    float scaleComp     = worldUnitsPerTexel[cascade] * 100.0;
 
     // Step 1: Blocker search (using raw depth texture)
-    float avgBlockerDepth = findBlocker(projCoords.xy, zReceiver, lightSize * texelSize * searchRadius, normal, cascade);
+    float avgBlockerDepth = findBlocker(projCoords.xy, zReceiver, (lightSize * texelSize * searchRadius) / scaleComp, cascade);
     if (avgBlockerDepth < 0.0) return 1.0;
 
     // Step 2: Estimate penumbra size
@@ -179,33 +175,42 @@ float PCSS(vec4 LSPos, vec3 normal, int cascade)
 
     vec3 lightDir = mat3(viewMatrix) * normalize(dirLightDir);
     float bias = max(0.0025 * (1.0 - dot(normal, lightDir)), 0.00005);
+    bias /= scaleComp;
 
-    if (cascade == NUM_CASCADES)
-        bias *= 1 / (far * 0.5);
-    else
-        bias *= 1 / (cascadeSplits[cascade] * 0.5);
+    // if (cascade == NUM_CASCADES)
+    //     bias *= 1 / (far * 0.5);
+    // else
+    //     bias *= 1 / (cascadeSplits[cascade] * 0.5);
 
     // float angle = rand(gl_FragCoord.xy) * 6.2831853;
-    float angle = rand(vec2(floor(projCoords.xy * textureSize(GNormal, 0) * 16))) * 6.2831853;
-    mat2  rot   = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    float angle  = rand(vec2(floor(projCoords.xy * textureSize(GNormal, 0) * 16))) * 6.2831853;
+    mat2  rot    = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2 offsetVec = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831);
-        vec2 offset = offsetVec * penumbra * texelSize * jitterRadius;
 
-        float dist = length(offsetVec);
-        float sigma = 0.8;
-        float weight = exp(-(dist * dist) / (2.0 * sigma * sigma));
-        weight = 1.0;
+        vec2 offsetVec = rot * (VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy))) * jitterRadius;
+        vec2 offset    = (offsetVec * penumbra * 10);
 
-        float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset, float(cascade))).r;
-        float visibility = sampledDepth < zReceiver - bias ? 0.0 : 1.0;
+        // vec2 offsetVec = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy)) * jitterRadius;
+        // vec2 offset = (offsetVec / scaleComp) * penumbra * texelSize * jitterRadius;
+
+        // float dist = length(offset);
+        // float sigma = 0.8;
+        // float weight = exp(-(dist * dist) / (2.0 * sigma * sigma));
+        float weight = 1.0;
+
+        // float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset * texelSize, float(cascade))).r;
+        // float visibility = sampledDepth < zReceiver - bias ? 0.0 : 1.0;
+        // shadow += (1.0 - visibility) * weight;
+
+        vec3 shadowUV = vec3(projCoords.xy, cascade);
+        float visibility = texture(DirShadowMap, vec4(shadowUV.xy + (offset * texelSize) / scaleComp, shadowUV.z, zReceiver - bias));
+
         shadow += (1.0 - visibility) * weight;
-
         totalWeight += weight;
     }
 
-    // return penumbra;
+    return pow(avgBlockerDepth, 3);
 
     shadow /= totalWeight;
     shadow = pow(shadow, shadowPower);
@@ -214,7 +219,9 @@ float PCSS(vec4 LSPos, vec3 normal, int cascade)
 
 float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
 {
-    int NUM_SAMPLES = 12;
+    int   NUM_SAMPLES = 12;
+    float radius      = 0.002;
+    float scaleComp   = worldUnitsPerTexel[cascade] * 300;
 
     vec3 projCoords = LSPos.xyz / LSPos.w;
     projCoords = projCoords * 0.5 + 0.5;
@@ -224,28 +231,21 @@ float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
     float currentDepth = projCoords.z;
 
     vec3 lightDir = mat3(viewMatrix) * normalize(dirLightDir);
-    float bias = max(0.0025 * (1.0 - dot(normal, lightDir)), 0.00005);
+    float bias = max(0.0035 * (1.0 - dot(normal, lightDir)), 0.00005);
+    bias /= scaleComp;
 
-    if (cascade == NUM_CASCADES)
-        bias *= 1 / (far * 0.5);
-    else
-        bias *= 1 / (cascadeSplits[cascade] * 0.5);
-
-    ivec2 texSize  = textureSize(DirShadowMapRaw, 0).xy;
-    vec2 texelSize = 1.0 / texSize;
+    ivec2 texSize   = textureSize(DirShadowMapRaw, 0).xy;
+    vec2  texelSize = 1.0 / texSize;
 
     float shadow = 0.0;
-    float angle  = rand(vec2(floor(projCoords.xy * textureSize(GNormal, 0) * 16))) * 6.2831853;
+    float angle  = rand(vec2(floor(LSPos.xy * 128.0))) * 6.2831853;
     mat2  rot    = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2 offset = rot * VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy) * 6.2831853);
-
-        // float sampledDepth = texture(DirShadowMapRaw, vec3(projCoords.xy + offset * texelSize * 2.0, float(cascade))).r;
-        // float visibility = sampledDepth < projCoords.z - bias ? 0.0 : 1.0;
+        vec2 offset = rot * (VogelDiskSample(i, NUM_SAMPLES, rand(projCoords.xy))) * 6.2831853;
 
         vec3 shadowUV = vec3(projCoords.xy, cascade);
-        float visibility = texture(DirShadowMap, vec4(shadowUV.xy + offset * texelSize * 5.0, shadowUV.z, currentDepth - bias));
+        float visibility = texture(DirShadowMap, vec4(shadowUV.xy + (offset * radius) / scaleComp, shadowUV.z, currentDepth - bias));
 
         shadow += visibility;
     }

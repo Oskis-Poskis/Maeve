@@ -22,6 +22,7 @@
 namespace UI
 {
     void Resize(int width, int height);
+    void ReloadShaders();
     void RecalcMenuWidths(Menu* targetmenu);
 
     void DrawList(int xoffset, int yoffset, std::vector<std::string>* items, Menu &submenu, bool gradient = false);
@@ -891,6 +892,7 @@ namespace UI
     void Initialize()
     {
         Engine::RegisterResizeCallback(Resize);
+        Engine::RegisterEditorReloadShadersFunction(ReloadShaders);
 
         rectShader         = std::make_unique<Shader>("/res/shaders/ui/rect");
         gradientRectShader = std::make_unique<Shader>("/res/shaders/ui/gradientrect");
@@ -983,5 +985,15 @@ namespace UI
         circleShader->SetMatrix4("projection", AM::OrthoProjMat4);
         colorWheelShader->Use();
         colorWheelShader->SetMatrix4("projection", AM::OrthoProjMat4);
+    }
+
+    void ReloadShaders()
+    {
+        rectShader->Reload();
+        gradientRectShader->Reload();
+        frostedRectShader->Reload();
+        circleShader->Reload();
+        colorWheelShader->Reload();
+        Resize(Engine::GetWindowSize().x, Engine::GetWindowSize().y);
     }
 }

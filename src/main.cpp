@@ -36,9 +36,9 @@ int main()
     
     // SM::Object* floor  = new SM::Object("Floor", "loaded_4");
     // floor->SetScale({7.5f, 7.5f, 0.1f});
-    // SM::Object* floor  = new SM::Object("Floor", "loaded_4");
-    // floor->SetScale({35.0f, 35.0f, 0.1f});
-    // floor->SetPosition({0.0f, 15.0f, -20.0f});
+    SM::Object* floor  = new SM::Object("Floor", "loaded_4");
+    floor->SetScale({35.0f, 35.0f, 0.1f});
+    floor->SetPosition({0.0f, 15.0f, -20.0f});
     
     // SM::Object* cube  = new SM::Object("Cube", "loaded_4");
     // cube->SetPosition({2.0f, 0.0f, 0.7f});
@@ -46,7 +46,7 @@ int main()
     // SM::AddNode(suzanne);
     // SM::AddNode(floor);
     // SM::AddNode(cube);
-    // SM::AddNode(floor);
+    SM::AddNode(floor);
 
     int num = 7;
     int spacing = 4;

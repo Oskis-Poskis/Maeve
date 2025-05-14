@@ -28,6 +28,7 @@ namespace Deferred
     const int NUM_CASCADES   = 3;
     const int SHADOW_MAP_RES = 2048;
     float cascadeSplits[NUM_CASCADES] = { 10.0f, 25.0f, 55.0f };
+    float worldUnitsPerTexel[NUM_CASCADES];
     glm::mat4 lightSpaceMatrices[NUM_CASCADES];
     unsigned int DirCascades;
 
@@ -93,8 +94,8 @@ namespace Deferred
             
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
             
         constexpr float bordercolor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
         glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, bordercolor);
@@ -151,7 +152,6 @@ namespace Deferred
     
     void DrawShadows()
     {
-        // glCullFace(GL_FRONT);
         glBindFramebuffer(GL_FRAMEBUFFER, dirShadowMapFBO);
         glEnable(GL_POLYGON_OFFSET_FILL);
         glDrawBuffer(GL_NONE);
@@ -162,7 +162,7 @@ namespace Deferred
 
         glViewport(0, 0, 2048, 2048);
 
-        glm::vec3 lightTarget(0.0f);
+        glm::vec3 lightTarget = AM::EditorCam.Position;
         glm::vec3 lightDir(1.0f, -1.0f, 1.0f);
         // glm::vec3 lightPos(10.0f, -10.0f, 10.0f);
 
@@ -213,6 +213,11 @@ namespace Deferred
                 maxZ = std::max(maxZ, trf.z);
             }
 
+            float spanX = maxX - minX;
+            float spanY = maxY - minY;
+            float maxSpan = std::max(spanX, spanY);
+            worldUnitsPerTexel[i] = maxSpan / float(SHADOW_MAP_RES);
+
             constexpr float zMult = 10.0f;
             if   (minZ < 0) minZ *= zMult;
             else minZ /= zMult;
@@ -241,38 +246,12 @@ namespace Deferred
                 else
                     glDrawArraysInstanced(GL_TRIANGLES, 0, mesh.TriangleCount * 3, instanceCount);
             }
-
-            // for (auto const& mesh : AM::Meshes)
-            // {
-            //     if (mesh.second.TriangleCount == 0 || mesh.second.VAO == 0) continue;
-
-            //     int numElements = mesh.second.TriangleCount * 3;
-            //     glBindVertexArray(mesh.second.VAO);
-
-            //     int index = 0;
-            //     for (auto &node : SM::SceneNodes)
-            //     {
-            //         if (node->GetType() == SM::NodeType::Object_)
-            //         {
-            //             SM::Object* object = dynamic_cast<SM::Object*>(node);
-            //             if (object->GetMeshID() == mesh.first)
-            //             {
-            //                 S_shadow->SetMatrix4("model", object->GetModelMatrix());
-            //                 if (mesh.second.UseElements) glDrawElements(GL_TRIANGLES, numElements, GL_UNSIGNED_INT, 0);
-            //                 else glDrawArrays(GL_TRIANGLES, 0, mesh.second.TriangleCount * 3);
-            //             }
-            //             index++;
-            //         }
-            //     }
-            // }
         }
 
         glViewport(0, 0, Engine::GetWindowSize().x, Engine::GetWindowSize().y);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         glDisable(GL_POLYGON_OFFSET_FILL);
-
-        // glCullFace(GL_BACK);
     }
 
     void CalcShadows()
@@ -291,6 +270,10 @@ namespace Deferred
         S_shadowCalc->SetMatrix4(std::format("lightSpaceMatrices[{}]", 0), lightSpaceMatrices[0]);
         S_shadowCalc->SetMatrix4(std::format("lightSpaceMatrices[{}]", 1), lightSpaceMatrices[1]);
         S_shadowCalc->SetMatrix4(std::format("lightSpaceMatrices[{}]", 2), lightSpaceMatrices[2]);
+
+        S_shadowCalc->SetFloat("worldUnitsPerTexel[0]", worldUnitsPerTexel[0]);
+        S_shadowCalc->SetFloat("worldUnitsPerTexel[1]", worldUnitsPerTexel[1]);
+        S_shadowCalc->SetFloat("worldUnitsPerTexel[2]", worldUnitsPerTexel[2]);
 
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, GBuffers[GNormal]);

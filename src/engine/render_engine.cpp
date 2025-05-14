@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <format>
 #include <random>
@@ -18,7 +19,6 @@
 #include "../common/qk.h"
 #include "../ui/ui.h"
 #include "../ui/text_renderer.h"
-#include <iomanip>
 
 namespace Engine
 {
