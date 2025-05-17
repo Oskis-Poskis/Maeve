@@ -590,19 +590,22 @@ namespace UI
 
         float angle = glm::radians(hsv.x);
         float distance = glm::distance(mouse_pos, { Center.x, Center.y });
-        if (((Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && distance < OuterRadius && distance > InnerRadius)) || Input::KeyDown(GLFW_KEY_R) || isRotating)
+        if ((((Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && distance < OuterRadius && distance > InnerRadius)) || Input::KeyDown(GLFW_KEY_R) || isRotating) && slidingSliderID == -1)
         {
             isRotating = true;
-
             glm::vec2 neutral = mouse_pos - glm::vec2(Center.x, Center.y);
             angle = -std::atan2f(neutral.x, neutral.y) + std::numbers::pi / 2.0f;
         }
-        else isRotating = false;
-
-        if (isRotating) {
-            if (!Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1)) isRotating = false;
+        else {
+            isRotating = false;
         }
-
+        
+        if (isRotating) {
+            if (!Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1)) {
+                isRotating = false;
+            }
+        }
+        
         float angle_deg = glm::degrees(angle);
         if (angle_deg < 0) angle_deg += 360.0f;
 
@@ -616,7 +619,7 @@ namespace UI
         OutColor = qk::HSVToRGB({ angle_deg, 1.0f, 1.0f });
     }
 
-    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float& OutValue, int HotKey, bool Gradient, glm::vec3 Color1, glm::vec3 Color2)
+    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float& OutValue, int HotKey, bool Horizontal, bool Gradient, glm::vec3 Color1, glm::vec3 Color2)
     {
         int id = currentSliderID++; // grab and increment ID automatically
 
@@ -629,7 +632,7 @@ namespace UI
             UI::DrawRect(TopRight, BottomLeft, glm::vec3(1.0f));
         }
 
-        if (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight)) {
+        if (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight) && slidingSliderID == -1 && !isRotating) {
             slidingSliderID = id;
         }
 
@@ -643,27 +646,38 @@ namespace UI
         }
 
         if (slidingSliderID == id) {
-            float mouseDeltaY = Input::GetMouseDeltaY();
-        
-            float sliderHeight = (TopRight.y - BottomLeft.y);
-            if (sliderHeight != 0.0f) {
-                float deltaValue = mouseDeltaY / sliderHeight;
+            float mouseDelta   = Horizontal ? Input::GetMouseDeltaX()     : Input::GetMouseDeltaY();
+            float sliderLength = Horizontal ? (TopRight.x - BottomLeft.x) : (TopRight.y - BottomLeft.y);
+
+            if (sliderLength != 0.0f) {
+                float deltaValue = mouseDelta / sliderLength;
                 OutValue += deltaValue;
             }
         
             OutValue = glm::clamp(OutValue, 0.0f, 1.0f);
         }
 
-        float handleY = glm::mix(BottomLeft.y, TopRight.y, OutValue);
+        float handlePCTG;
+        if (Horizontal) handlePCTG = glm::mix(BottomLeft.x, TopRight.x, OutValue);
+        else            handlePCTG = glm::mix(BottomLeft.y, TopRight.y, OutValue);
 
         int handleWidth  = 12;
         int handleHeight = 6;
 
-        glm::ivec2 handleTopRight   = glm::ivec2(TopRight.x + handleWidth / 2, handleY + handleHeight / 2);
-        glm::ivec2 handleBottomLeft = glm::ivec2(BottomLeft.x - handleWidth / 2, handleY - handleHeight / 2);
+        glm::ivec2 handleTopRight;
+        glm::ivec2 handleBottomLeft;
+
+        if (Horizontal) {
+            handleTopRight   = glm::ivec2(handlePCTG + handleHeight / 2, TopRight.y   + handleWidth / 2);
+            handleBottomLeft = glm::ivec2(handlePCTG - handleHeight / 2, BottomLeft.y - handleWidth / 2);
+        }
+        else {
+            handleTopRight   = glm::ivec2(TopRight.x   + handleWidth / 2, handlePCTG + handleHeight / 2);
+            handleBottomLeft = glm::ivec2(BottomLeft.x - handleWidth / 2, handlePCTG - handleHeight / 2);
+        }
 
         UI::DrawRect(handleTopRight + glm::ivec2(2), handleBottomLeft - glm::ivec2(2), glm::vec3(0.085f));
-        UI::DrawRect(handleTopRight, handleBottomLeft, glm::vec3(1.0f));
+        UI::DrawRect(handleTopRight,                 handleBottomLeft,                 glm::vec3(1.0f));
     }
 
     void DrawInputBox(glm::ivec2 TopRight, glm::ivec2 BottomLeft, std::string& OutText, int HotKey, bool OnlyNumbers, bool OnlyIntegers)
@@ -672,7 +686,7 @@ namespace UI
         uintptr_t id = reinterpret_cast<uintptr_t>(&OutText);
 
         // Handle clicking to focus
-        if (activeInputBoxID == -1 && (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight)))
+        if (activeInputBoxID == -1 && (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight)) && slidingSliderID == -1 && !isRotating)
         {
             OutText.clear();
             activeInputBoxID = id;

@@ -70,10 +70,10 @@ namespace  LightManipulation
 
             UI::DrawColorWheel(screen_pos, originalColor, selectedColor, OuterRadius, InnerRadius);
 
-            UI::DrawSlider(topRight, bottomLeft, newSaturation, GLFW_KEY_1, true, glm::vec3(1.0f), qk::HSVToRGB({originalHSV.x, 1.0f, 1.0f}));
+            UI::DrawSlider(topRight, bottomLeft, newSaturation, GLFW_KEY_1, false, true, glm::vec3(1.0f), qk::HSVToRGB({originalHSV.x, 1.0f, 1.0f}));
 
             glm::ivec2 offset(40, 0);
-            UI::DrawSlider(topRight + offset, bottomLeft + offset, newValue, GLFW_KEY_2, true, glm::vec3(0.0f), glm::vec3(1.0f));
+            UI::DrawSlider(topRight + offset, bottomLeft + offset, newValue, GLFW_KEY_2, false, true, glm::vec3(0.0f), glm::vec3(1.0f));
 
             glm::vec3 newHue = qk::RGBToHSV(selectedColor);
             glm::vec3 newColor = qk::HSVToRGB(glm::vec3(newHue.x, newSaturation, newValue));
@@ -96,7 +96,6 @@ namespace  LightManipulation
                 // Handle invalid input (e.g., non-numeric text)
                 // Optionally, you could reset the input text or leave it unchanged
                 // std::cerr << "Invalid intensity value: " << InputText << std::endl;
-                printf("shit\n");
             } catch (const std::out_of_range& e) {
                 // Handle out-of-range values (e.g., too large or too small)
                 // std::cerr << "Intensity value out of range: " << InputText << std::endl;

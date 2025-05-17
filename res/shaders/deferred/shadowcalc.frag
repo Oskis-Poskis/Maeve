@@ -220,7 +220,7 @@ float PCSS(vec4 LSPos, vec3 normal, int cascade)
 float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
 {
     int   NUM_SAMPLES = 12;
-    float radius      = 0.002;
+    float radius      = 0.001;
     float scaleComp   = worldUnitsPerTexel[cascade] * 300;
 
     vec3 projCoords = LSPos.xyz / LSPos.w;
@@ -231,7 +231,7 @@ float CalcDirShadow(vec4 LSPos, vec3 normal, vec3 viewPos, int cascade)
     float currentDepth = projCoords.z;
 
     vec3 lightDir = mat3(viewMatrix) * normalize(dirLightDir);
-    float bias = max(0.0035 * (1.0 - dot(normal, lightDir)), 0.00005);
+    float bias = max(0.0025 * (1.0 - dot(normal, lightDir)), 0.00005);
     bias /= scaleComp;
 
     ivec2 texSize   = textureSize(DirShadowMapRaw, 0).xy;

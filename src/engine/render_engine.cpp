@@ -19,6 +19,7 @@
 #include "../common/qk.h"
 #include "../ui/ui.h"
 #include "../ui/text_renderer.h"
+#include "../ui/box_ui.h"
 
 namespace Engine
 {
@@ -134,6 +135,7 @@ namespace Engine
         LightManipulation::Initialize();
         Text::Initialize();
         UI::Initialize();
+        BUI::Initialize();
         qk::Initialize();
 
         windowResized(window, windowWidth, windowHeight);
@@ -175,6 +177,7 @@ namespace Engine
         /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_F)) SM::FocusSelection();
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
         /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_HOME)) for (const auto& func : editorReloadShaderEvents) { func(); }
+        auto test = 1;
         
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
@@ -236,11 +239,8 @@ namespace Engine
 
         qk::BeginGPUTimer("UI");
         /* EDITOR ONLY */ UI::Render();
-        float time_UI = qk::EndGPUTimer("UI");
-        if (time_UI != 0.0f) {
-            UI_Timing = time_UI;
-        }
-
+        /* EDITOR ONLY */ BUI::DrawTest();
+        
         Stats::Count(glfwGetTime());
         SM::CalculateObjectsTriCount();
         if (debugMode == DebugMode::Stats) {
@@ -251,8 +251,13 @@ namespace Engine
             Text::Render(qk::LabelWithPaddedNumber("Shading:", Shading_Timing, 15, 5),             15, y - 26 * 3, 0.5f);
             Text::Render(qk::LabelWithPaddedNumber("Post Process:", PostProcess_Timing, 15, 5),    15, y - 26 * 4, 0.5f);
             Text::Render(qk::LabelWithPaddedNumber("UI:", UI_Timing, 15, 5),                       15, y - 26 * 5, 0.5f);
-
+            
             Stats::DrawStats();
+        }
+        
+        float time_UI = qk::EndGPUTimer("UI");
+        if (time_UI != 0.0f) {
+            UI_Timing = time_UI;
         }
 
         glDisable(GL_BLEND);

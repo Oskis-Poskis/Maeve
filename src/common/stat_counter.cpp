@@ -58,7 +58,6 @@ namespace Stats
         std::string meshes  = std::format<int>("Meshes in memory: {} ({} triangles)", AM::Meshes.size(), qk::FmtK(AM::UniqueMeshTriCount));
         std::string objects = std::format<int>("Nodes in scene: {} ({} triangles)", SM::SceneNodes.size(), qk::FmtK(SM::ObjectsTriCount));
         
-        glDisable(GL_DEPTH_TEST);
         float lineSpacing = 20 * Text::GetGlobalTextScaling();
         Text::Render(Stats::Renderer,                                                  15, Engine::GetWindowSize().y - yOffset - 0  * lineSpacing, textScaling);
         Text::Render("Window Size: " + qk::FormatVec(Engine::GetWindowSize()),         15, Engine::GetWindowSize().y - yOffset - 1  * lineSpacing, textScaling);
@@ -69,7 +68,6 @@ namespace Stats
         Text::Render(objects,                                                          15, Engine::GetWindowSize().y - yOffset - 8  * lineSpacing, textScaling);
         Text::Render("Input Context: " + Input::InputContextString(),                  15, Engine::GetWindowSize().y - yOffset - 10 * lineSpacing, textScaling);
         Text::Render("Debug Mode: "    + std::string(Engine::DebugModeToString(Engine::debugMode)), 15, Engine::GetWindowSize().y - yOffset - 11 * lineSpacing, textScaling);
-        glEnable(GL_DEPTH_TEST);
     }
 
     void Initialize()

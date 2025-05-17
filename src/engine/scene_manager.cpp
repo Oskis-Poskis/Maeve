@@ -100,7 +100,7 @@ namespace SM
             // Set the final camera position
             glm::vec3 cameraPos = obj->GetPosition() - viewDirection * cameraDistance;
             AM::EditorCam.SetTargetPosition(cameraPos);
-            AM::EditorCam.SetDirection(viewDirection);
+            // AM::EditorCam.SetDirection(viewDirection);
         }
     }
 
