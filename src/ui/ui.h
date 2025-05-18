@@ -10,7 +10,7 @@ namespace UI
     void Render();
     void Eject();
 
-    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float& OutValue, int HotKey = 84, bool Horizontal = false, bool Gradient = false, glm::vec3 Color1 = glm::vec3(1.0f), glm::vec3 Color2 = glm::vec3(0.0f));
+    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float StartValue, float& OutValue, int HotKey = 84, bool Horizontal = false, bool Gradient = false, glm::vec3 Color1 = glm::vec3(1.0f), glm::vec3 Color2 = glm::vec3(0.0f));
     void DrawColorWheel(glm::ivec2 Center, glm::vec3 StartColor, glm::vec3& OutColor, int OuterRadius, int InnerRadius);
     void DrawInputBox(glm::ivec2 TopRight, glm::ivec2 BottomLeft, std::string& OutText, int HotKey = 51, bool OnlyNumbers = false, bool OnlyIntegers = false);
     

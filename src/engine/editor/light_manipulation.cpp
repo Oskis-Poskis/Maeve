@@ -11,10 +11,23 @@
 #include "../../common/qk.h"
 #include "../../common/input.h"
 #include "../../ui/ui.h"
+#include "../../ui/box_ui.h"
 #include "../../ui/text_renderer.h"
 
-namespace  LightManipulation
+namespace LightManipulation
 {
+    glm::vec3      chosenColor;
+    float          chosenSaturation = 1.0f;
+    float          chosenValue = 1.0f;
+    std::string    chosenIntensity = "";
+    
+    BUI::Grid_Item colorWheel ({125, 125}, 10);
+    BUI::Grid_Item saturationSlider({ 25, 125}, 10);
+    BUI::Grid_Item valueSlider({ 25, 125}, 10);
+    BUI::Grid_Item intensityField({ 125, 25}, 10);
+    
+    BUI::UI_Grid   grid;
+
     bool colorGizmoOpen = false;
     std::string InputText = "";
     void DrawLightColorGizmo()
@@ -49,49 +62,19 @@ namespace  LightManipulation
                 return;
             }
 
-            SM::SceneNode* node = SM::SceneNodes[SM::GetSelectedIndex()];
-            SM::Light* light = SM::GetLightFromNode(node);
+            SM::SceneNode* node  = SM::SceneNodes[SM::GetSelectedIndex()];
+            SM::Light*     light = SM::GetLightFromNode(node);
 
-            float InnerRadius = 55.0f;
-            float OuterRadius = 75.0f;
-            int slider_width = 20;
-            glm::vec2 screen_pos = qk::WorldToScreen(light->GetPosition());
-            glm::ivec2 slider_center = screen_pos + glm::vec2(OuterRadius + slider_width / 2 + 20, 0);
+            grid.Draw(qk::WorldToScreen(light->GetPosition()));
 
-            glm::ivec2 topRight = slider_center + glm::ivec2(slider_width / 2, OuterRadius);
-            glm::ivec2 bottomLeft = slider_center - glm::ivec2(slider_width / 2, OuterRadius);
-
-            glm::vec3 originalColor = light->GetColor();
-            glm::vec3 originalHSV = qk::RGBToHSV(originalColor);
-
-            float newSaturation = originalHSV.y;
-            float newValue = originalHSV.z;
-            glm::vec3 selectedColor = originalColor;
-
-            UI::DrawColorWheel(screen_pos, originalColor, selectedColor, OuterRadius, InnerRadius);
-
-            UI::DrawSlider(topRight, bottomLeft, newSaturation, GLFW_KEY_1, false, true, glm::vec3(1.0f), qk::HSVToRGB({originalHSV.x, 1.0f, 1.0f}));
-
-            glm::ivec2 offset(40, 0);
-            UI::DrawSlider(topRight + offset, bottomLeft + offset, newValue, GLFW_KEY_2, false, true, glm::vec3(0.0f), glm::vec3(1.0f));
-
-            glm::vec3 newHue = qk::RGBToHSV(selectedColor);
-            glm::vec3 newColor = qk::HSVToRGB(glm::vec3(newHue.x, newSaturation, newValue));
-
-            glm::ivec2 slider_center_below = screen_pos - glm::vec2(0, OuterRadius + slider_width / 2 + 20);
-
-            glm::ivec2 topRightBelow = slider_center_below + glm::ivec2(OuterRadius, slider_width / 2);
-            glm::ivec2 bottomLeftBelow = slider_center_below - glm::ivec2(OuterRadius, slider_width / 2);
-
-            float intensity = light->GetIntensity();
-            UI::DrawInputBox(topRightBelow, bottomLeftBelow, InputText, GLFW_KEY_3, true);
+            glm::vec3 newColor = qk::HSVToRGB(glm::vec3(qk::RGBToHSV(chosenColor).r, chosenSaturation, chosenValue));
+            light->SetColor(newColor);
 
             try {
                 // Only update the intensity if the InputText is a valid number
                 float newIntensity = std::stof(InputText);  // Convert string to float
                 newIntensity = std::round(newIntensity * 1000.0f) / 1000.0f;
-
-                light->SetIntensity(newIntensity);  // Set the light intensity to the new value
+                light->SetIntensity(newIntensity);
             } catch (const std::invalid_argument& e) {
                 // Handle invalid input (e.g., non-numeric text)
                 // Optionally, you could reset the input text or leave it unchanged
@@ -100,13 +83,59 @@ namespace  LightManipulation
                 // Handle out-of-range values (e.g., too large or too small)
                 // std::cerr << "Intensity value out of range: " << InputText << std::endl;
             }
-
-            light->SetColor(newColor);
         }
     }
 
     void Initialize()
     {
+        colorWheel.data     = &chosenColor;
+        colorWheel.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+            glm::ivec2 center = (tr + bl) / 2;
+            float      radius = std::abs(tr.x - bl.x) / 2.0f;
+            
+            SM::SceneNode* node  = SM::SceneNodes[SM::GetSelectedIndex()];
+            SM::Light*     light = SM::GetLightFromNode(node);
+            
+            UI::DrawColorWheel(center, light->GetColor(), *static_cast<glm::vec3*>(data), radius, radius - 25);
+        };
+
+        saturationSlider.data = &chosenSaturation;
+        saturationSlider.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+            SM::SceneNode* node  = SM::SceneNodes[SM::GetSelectedIndex()];
+            SM::Light*     light = SM::GetLightFromNode(node);
+
+            glm::vec3 originalColor = light->GetColor();
+            glm::vec3 originalHSV   = qk::RGBToHSV(originalColor);
+
+            
+            UI::DrawSlider(tr, bl, originalHSV.y, *static_cast<float*>(data), GLFW_KEY_1, false, true, glm::vec3(1.0f), qk::HSVToRGB({originalHSV.x, 1.0f, 1.0f}));
+        };
+        
+        valueSlider.data = &chosenValue;
+        valueSlider.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+            SM::SceneNode* node  = SM::SceneNodes[SM::GetSelectedIndex()];
+            SM::Light*     light = SM::GetLightFromNode(node);
+            
+            glm::vec3 originalColor = light->GetColor();
+            glm::vec3 originalHSV   = qk::RGBToHSV(originalColor);
+            
+            UI::DrawSlider(tr, bl, originalHSV.z, *static_cast<float*>(data), GLFW_KEY_2, false, true, glm::vec3(0.0f), glm::vec3(1.0f));
+        };
+
+        intensityField.data = &InputText;
+        intensityField.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+            SM::SceneNode* node  = SM::SceneNodes[SM::GetSelectedIndex()];
+            SM::Light*     light = SM::GetLightFromNode(node);
+            
+            UI::DrawInputBox(tr, bl, *static_cast<std::string*>(data), GLFW_KEY_3, true);
+        };
+        
+        grid.Items = {
+            { colorWheel, saturationSlider, valueSlider },
+            { intensityField                            },
+        };
+        grid.UpdateExtents();
+
         Engine::RegisterEditorDrawUIFunction(DrawLightColorGizmo);
     }   
 }

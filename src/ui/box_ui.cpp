@@ -2,8 +2,6 @@
 #include "ui.h"
 #include "../engine/render_engine.h"
 
-#include <vector>
-#include <iostream>
 #include <glm/glm.hpp>
 
 namespace BUI
@@ -25,53 +23,53 @@ namespace BUI
 
     void Initialize()
     {
-        it1.data     = &myColor1;
-        it1.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
-            glm::ivec2 center = (tr + bl) / 2;
-            float      radius = std::abs(tr.x - bl.x) / 2.0f;
-            UI::DrawColorWheel(center, myColor1, *static_cast<glm::vec3*>(data), radius, radius - 25);
-        };
-
-        it2.data     = &myValue1;
-        it2.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
-            UI::DrawSlider(tr, bl, *static_cast<float*>(data));
-        };
-
-        it3.data     = &myValue2;
-        it3.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
-            UI::DrawSlider(tr, bl, *static_cast<float*>(data));
-        };
-
-        it4.data     = &myString;
-        it4.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
-            UI::DrawInputBox(tr, bl, *static_cast<std::string*>(data), 51, true);
-        };
-
-        it5.data     = &myValue3;
-        it5.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
-            UI::DrawSlider(tr, bl, *static_cast<float*>(data), 84, true);
-        };
-
-        // it6.contributeExtents = false;
-        // it6.data     = &myColor2;
-        // it6.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+        // it1.data     = &myColor1;
+        // it1.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
         //     glm::ivec2 center = (tr + bl) / 2;
         //     float      radius = std::abs(tr.x - bl.x) / 2.0f;
-        //     UI::DrawColorWheel(center, myColor2, *static_cast<glm::vec3*>(data), radius, radius - 25);
+        //     UI::DrawColorWheel(center, myColor1, *static_cast<glm::vec3*>(data), radius, radius - 25);
         // };
 
-        Grid.Items = {
-            { it1, it2, it3 },
-            { it4,          },
-            { it5,          },
-        };
+        // it2.data     = &myValue1;
+        // it2.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
+        //     UI::DrawSlider(tr, bl, *static_cast<float*>(data));
+        // };
 
-        Grid.UpdateExtents();
+        // it3.data     = &myValue2;
+        // it3.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
+        //     UI::DrawSlider(tr, bl, *static_cast<float*>(data));
+        // };
+
+        // it4.data     = &myString;
+        // it4.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
+        //     UI::DrawInputBox(tr, bl, *static_cast<std::string*>(data), 51, true);
+        // };
+
+        // it5.data     = &myValue3;
+        // it5.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data) {
+        //     UI::DrawSlider(tr, bl, *static_cast<float*>(data), 84, true);
+        // };
+
+        // // it6.contributeExtents = false;
+        // // it6.data     = &myColor2;
+        // // it6.drawFunc = [&](glm::ivec2 tr, glm::ivec2 bl, void* data)  {
+        // //     glm::ivec2 center = (tr + bl) / 2;
+        // //     float      radius = std::abs(tr.x - bl.x) / 2.0f;
+        // //     UI::DrawColorWheel(center, myColor2, *static_cast<glm::vec3*>(data), radius, radius - 25);
+        // // };
+
+        // Grid.Items = {
+        //     { it1, it2, it3 },
+        //     { it4,          },
+        //     { it5,          },
+        // };
+
+        // Grid.UpdateExtents();
     }
 
     void DrawTest()
     {
-        Grid.Draw();
+        // Grid.Draw();
     }
 
     void UI_Grid::UpdateExtents()
@@ -122,9 +120,9 @@ namespace BUI
     }
 
     float value = 0.0f;
-    void UI_Grid::Draw()
+    void UI_Grid::Draw(glm::ivec2 topLeft)
     {
-        glm::ivec2 center = Engine::GetWindowSize() / 2;
+        // glm::ivec2 center = Engine::GetWindowSize() / 2;
 
         // UI::DrawRect(center + glm::ivec2(-4, 4),
         //             ExteriorExtents.x + 8,
@@ -151,8 +149,8 @@ namespace BUI
                 //             item.maxExtent.y,
                 //             glm::vec3(0.2f));
 
-                item.Draw(center + glm::ivec2(x_offset + item.padding + item.maxExtent.x, y_offset - item.padding),
-                          center + glm::ivec2(x_offset + item.padding, y_offset - item.padding - item.maxExtent.y));
+                item.Draw(topLeft + glm::ivec2(x_offset + item.padding + item.maxExtent.x, y_offset - item.padding),
+                          topLeft + glm::ivec2(x_offset + item.padding, y_offset - item.padding - item.maxExtent.y));
 
                 // UI::DrawSlider(center + glm::ivec2(x_offset + item.maxExtent.x + item.padding,  y_offset - item.padding),    
                 //                center + glm::ivec2(x_offset + item.padding,                    -item.maxExtent.y + y_offset - item.padding), value);

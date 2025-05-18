@@ -1,9 +1,9 @@
+#pragma once
+
 #include <vector>
 #include <functional>
 
 #include <glm/glm.hpp>
-
-#pragma once
 
 namespace BUI
 {
@@ -35,6 +35,6 @@ namespace BUI
         glm::ivec2                           ExteriorExtents;
 
         void UpdateExtents();
-        void Draw();
+        void Draw(glm::ivec2 topLeft);
     };
 }

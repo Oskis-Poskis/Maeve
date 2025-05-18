@@ -619,7 +619,7 @@ namespace UI
         OutColor = qk::HSVToRGB({ angle_deg, 1.0f, 1.0f });
     }
 
-    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float& OutValue, int HotKey, bool Horizontal, bool Gradient, glm::vec3 Color1, glm::vec3 Color2)
+    void DrawSlider(glm::ivec2 TopRight, glm::ivec2 BottomLeft, float StartValue, float& OutValue, int HotKey, bool Horizontal, bool Gradient, glm::vec3 Color1, glm::vec3 Color2)
     {
         int id = currentSliderID++; // grab and increment ID automatically
 
@@ -631,6 +631,8 @@ namespace UI
             UI::DrawRect(TopRight + 2, BottomLeft - 2, glm::vec3(0.085f));
             UI::DrawRect(TopRight, BottomLeft, glm::vec3(1.0f));
         }
+
+        OutValue = StartValue;
 
         if (Input::MouseButtonDown(GLFW_MOUSE_BUTTON_1) && isRectHovered(BottomLeft, TopRight) && slidingSliderID == -1 && !isRotating) {
             slidingSliderID = id;
