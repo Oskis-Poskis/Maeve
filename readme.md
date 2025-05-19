@@ -1,4 +1,5 @@
 [![YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube)](https://www.youtube.com/@OskarKassander/videos)
+[![Website](https://img.shields.io/badge/Website-Visit-blue?logo=google-chrome)](https://kassander.com)
 
 # Maeve  
 Maeve is a passion project based on my personal ideas and desires for a 3D engine and scene editor. The goal is to make a minimal UI experience that provides maximum screenspace and an efficient workflow using intuitive shortcuts. It is also a learning experience for C++ and build systems and there will probably be a rewrite in the future
@@ -62,6 +63,8 @@ Using alt to move the camera can break unless you disable the setting "Disable M
 
 ### **Doto list**
 - Multi node selection
+- Wireframe mode
+- Preview GBuffers?
 - Create directional light type
     - Move dir shadow mapping into light instead of it being global
     - Create dir light "C" menu
@@ -73,6 +76,11 @@ Using alt to move the camera can break unless you disable the setting "Disable M
 - Fix PCSS shadow mapping to work with cascades
 - Grid drawing
     - Some kindof grid drawing for axis when translating objects
+- Offload file dialog to other thread to avoid freezing application
+- Implement bloom
+- Implement SSAO
+- Implement some anti-aliasing method, FXAA, SMAA etc
+- Implement post-processing controls + color grading
 
 ### **Done**
 - .obj file parsing ✅

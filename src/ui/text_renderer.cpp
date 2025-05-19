@@ -23,7 +23,7 @@ namespace Text
     std::unique_ptr<Shader> textShader;
     unsigned int _textVAO, _textVBO;
 
-    float globalTextScale = 1.0;
+    float globalTextScale = 1.25;
 
     struct Character
     {
