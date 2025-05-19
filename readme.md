@@ -1,5 +1,5 @@
 [![YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube)](https://www.youtube.com/@OskarKassander/videos)
-[![Website](https://img.shields.io/badge/Website-Visit-blue?logo=google-chrome)](https://kassander.com)
+[![Website](https://img.shields.io/badge/Website-Visit-blue?logo=google-chrome)](https://kassander.com/contact.html)
 
 # Maeve  
 Maeve is a passion project based on my personal ideas and desires for a 3D engine and scene editor. The goal is to make a minimal UI experience that provides maximum screenspace and an efficient workflow using intuitive shortcuts. It is also a learning experience for C++ and build systems and there will probably be a rewrite in the future
