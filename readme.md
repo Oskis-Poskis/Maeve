@@ -1,7 +1,7 @@
 [![YouTube](https://img.shields.io/badge/YouTube-Subscribe-red?logo=youtube)](https://www.youtube.com/@OskarKassander/videos)
 
 # Maeve  
-Maeve is a passion project based on my personal ideas and desires for a 3D engine and scene editor. The goal is to make a minimal UI experience that provides maximum screenspace and an efficient workflow using intuitive shortcuts. It is also a learning experience for C++ and build systems and there will probably be a rewrite in the future :x
+Maeve is a passion project based on my personal ideas and desires for a 3D engine and scene editor. The goal is to make a minimal UI experience that provides maximum screenspace and an efficient workflow using intuitive shortcuts. It is also a learning experience for C++ and build systems and there will probably be a rewrite in the future
 
 Game engine essentials such as animations, scripting, audio, physics, ai etc is a long way to go and right now I'm just defining the principles and design language while building the core.
 
