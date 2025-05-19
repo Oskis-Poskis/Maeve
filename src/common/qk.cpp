@@ -494,7 +494,7 @@ namespace qk
         AM::S_SingleColor->SetMatrix4("model",      model);
         AM::S_SingleColor->SetVector3("color",      color);
 
-        glBindVertexArray(AM::Meshes.at("plane").VAO);
+        glBindVertexArray(AM::Meshes.at("MV::PLANE").VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
     

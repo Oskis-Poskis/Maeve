@@ -23,7 +23,7 @@ namespace SM
 
     void Initialize()
     {
-        Engine::RegisterEditorDrawUIFunction(DrawLights);
+        Engine::RegisterEditorDraw3DFunction(DrawLights);
         Engine::RegisterEditorDrawUIFunction(DrawOrigin);
         Engine::RegisterEditorFunction(NodeSelection);
     }
@@ -102,6 +102,27 @@ namespace SM
             AM::EditorCam.SetTargetPosition(cameraPos);
             // AM::EditorCam.SetDirection(viewDirection);
         }
+        else if (node->GetType() == SM::NodeType::Light_) {
+            SM::Light* light  = SM::GetLightFromNode(node);
+            float lightSphereRadius  = 0.3;
+
+            float aspect = Engine::GetWindowSize().x / Engine::GetWindowSize().y;
+
+            // Compute the required distance based on FOV (height or width constraint)
+            float fovX_rad = 2 * atan(tan(glm::radians(AM::EditorCam.Fov) * 0.5f) * aspect);
+            float distY    = (lightSphereRadius * 0.5f) / tan(glm::radians(AM::EditorCam.Fov) * 0.5f);
+            float distX    = (lightSphereRadius * 0.5f)  / tan(fovX_rad * 0.5f);
+
+            // Final camera distance
+            float cameraDistance = std::max(distY, distX);
+
+            // Get the camera's view direction
+            glm::vec3 viewDirection = glm::normalize(light->GetPosition() - AM::EditorCam.Position);
+
+            // Set the final camera position
+            glm::vec3 cameraPos = light->GetPosition() - viewDirection * cameraDistance;
+            AM::EditorCam.SetTargetPosition(cameraPos);
+        }
     }
 
     void UpdateDrawList()
@@ -115,8 +136,7 @@ namespace SM
                 auto* object = static_cast<SM::Object*>(node);
                 const std::string& meshID = object->GetMeshID();
 
-                if (AM::Meshes.count(meshID))
-                    DrawList[meshID].Objects.push_back(object);
+                if (AM::Meshes.count(meshID)) DrawList[meshID].Objects.push_back(object);
             }
         }
     }
@@ -163,8 +183,13 @@ namespace SM
             if (node->GetType() == NodeType::Light_)
             {
                 SM::Light* light = dynamic_cast<SM::Light*>(node);
-                glm::vec2 pos = qk::WorldToScreen(light->GetPosition());
-                UI::DrawQuad(pos, 20, light->GetColor());
+                // glm::vec2 pos = qk::WorldToScreen(light->GetPosition());
+                // UI::DrawQuad(pos, 20, light->GetColor());
+                glm::vec3 camPos = AM::EditorCam.Position;
+                float dist  = glm::length(light->GetPosition() - camPos);
+                float scale = dist * 0.025f;
+                scale       = std::min(scale, 0.3f);
+                qk::DrawScreenAlignedPlane(light->GetPosition(), scale, light->GetColor());
             }
         }
     }
@@ -381,7 +406,7 @@ namespace SM
             AM::ClosestHit closestAABB;
 
             int i = 0;
-            float lightPickRadius = 0.35f;
+            float lightPickRadius = 0.3f;
             for (const auto& node : SM::SceneNodes) {
                 if (node->GetType() == SM::NodeType::Object_)
                 {

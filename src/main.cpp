@@ -10,10 +10,10 @@
 int main()
 {
     Engine::Initialize();
-
+    
     AM::IO::LoadObjAsync("res/objs/suzanne_smooth.obj", "loaded_1");
     AM::IO::LoadObjAsync("res/objs/cube.obj",           "loaded_2");
-
+    
     SM::Object* suzanne = new SM::Object("Suzanne", "loaded_1");
     suzanne->SetPosition({0, 0, 3});
     

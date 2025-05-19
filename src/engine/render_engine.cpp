@@ -171,13 +171,15 @@ namespace Engine
             SM::SceneNodeNames.erase(SM::SceneNodeNames.begin() + SM::GetSelectedIndex());
             SM::SelectSceneNode(std::max(SM::GetSelectedIndex() - 1, 0));
             SM::UpdateDrawList();
+
+            if (SM::SceneNodes[SM::GetSelectedIndex()]->GetType() == SM::Object_) SM::NumObjects--;
+            if (SM::SceneNodes[SM::GetSelectedIndex()]->GetType() == SM::Light_)  SM::NumLights--;
         }
         
-        /* EDITOR ONLY */ qk::ExecuteMainThreadTasks();
+        qk::ExecuteMainThreadTasks();
         /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_F)) SM::FocusSelection();
         /* EDITOR ONLY */ for (const auto& func : editorEvents) { func(); }
         /* EDITOR ONLY */ if (Input::KeyPressed(GLFW_KEY_HOME)) for (const auto& func : editorReloadShaderEvents) { func(); }
-        auto test = 1;
         
         // Make sure this view matrix is from active camera
         // This should happen after editorEvents
